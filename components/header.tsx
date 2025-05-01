@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
 import { Menu, X, User, LogOut, Briefcase, MessageSquare, ChevronDown } from "lucide-react"
@@ -57,7 +58,14 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold text-red-600">GAKUTEN</span>
+            <Image
+              src="/images/gakuten-logo.png"
+              alt="GAKUTEN Logo"
+              width={120}
+              height={40}
+              className="object-contain"
+              priority
+            />
           </Link>
 
           {!isMobile && (
@@ -250,6 +258,15 @@ export function Header() {
       {isMobile && mobileMenuOpen && (
         <div className="fixed inset-0 top-16 z-50 bg-background p-4">
           <nav className="flex flex-col space-y-4">
+            <Link href="/" className="flex items-center justify-center mb-4" onClick={closeMobileMenu}>
+              <Image
+                src="/images/gakuten-logo.png"
+                alt="GAKUTEN Logo"
+                width={120}
+                height={40}
+                className="object-contain"
+              />
+            </Link>
             <Link href="/jobs" className="flex items-center py-2 text-lg font-medium" onClick={closeMobileMenu}>
               求人を探す
             </Link>
