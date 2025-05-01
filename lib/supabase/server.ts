@@ -1,7 +1,6 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import type { Database } from "../database.types"
-import type { CookieOptions } from "@supabase/ssr"
 
 /**
  * サーバーサイドで Supabase クライアントを作成する関数
@@ -10,7 +9,6 @@ import type { CookieOptions } from "@supabase/ssr"
  * @returns Supabase クライアントインスタンス
  */
 export async function createClient() {
-  // cookies()関数を内部で呼び出し、awaitで解決する
   const cookieStore = await cookies()
 
   return createServerClient<Database>(
@@ -19,15 +17,14 @@ export async function createClient() {
     {
       cookies: {
         get(name: string) {
-          const cookieValue = cookieStore.get(name)
-          return cookieValue?.value
+          return cookieStore.get(name)?.value
         },
         // App Router のサーバーコンポーネントでは Cookie の設定は
         // レスポンスヘッダーを通じて行われるため、ここでは何もしない
-        set(name: string, value: string, options: CookieOptions) {
+        set(name: string, value: string, options: any) {
           // サーバーアクションや API ルートでは必要に応じて実装
         },
-        remove(name: string, options: CookieOptions) {
+        remove(name: string, options: any) {
           // サーバーアクションや API ルートでは必要に応じて実装
         },
       },
