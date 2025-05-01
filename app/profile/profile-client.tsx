@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import type { StudentProfile } from "@/types/student"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -14,19 +15,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-
-interface StudentProfile {
-  id?: string
-  first_name?: string
-  last_name?: string
-  university?: string
-  major?: string
-  graduation_year?: number
-  skills?: string[]
-  bio?: string
-  resume_url?: string
-  avatar_url?: string
-}
 
 interface ProfileClientProps {
   initialProfile: StudentProfile
