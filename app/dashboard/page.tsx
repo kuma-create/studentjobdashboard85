@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import DashboardClient from "./dashboard-client"
 import CompanyDashboardClient from "./company-dashboard-client"
+import type { CompanyDashboardClientProps } from "./types"
 
 export const revalidate = 0
 export const dynamic = "force-dynamic"
@@ -100,20 +101,55 @@ export default async function DashboardPage() {
     const user = session.user
 
     // ユーザーロールを取得
-    const { data: userRole, error: roleError } = await supabase
+    let { data: userRole, error: roleError } = await supabase
       .from("user_roles")
       .select("role, is_approved")
       .eq("id", user.id)
       .single()
 
-    if (roleError && roleError.code !== "PGRST116") {
+    if (roleError) {
       console.error("Error fetching user role:", roleError)
+
+      // ユーザーロールが存在しない場合は作成
+      if (roleError.code === "PGRST116") {
+        // レコードが見つからないエラー
+        const { error: insertError } = await supabase.from("user_roles").insert([
+          {
+            id: user.id,
+            role: "student", // デフォルトは学生ロール
+            is_approved: true,
+          },
+        ])
+
+        if (insertError) {
+          console.error("Error creating user role:", insertError)
+          throw new Error("ユーザーロールの作成に失敗しました")
+        }
+
+        // 作成したロールを取得
+        const { data: newRole, error: newRoleError } = await supabase
+          .from("user_roles")
+          .select("role, is_approved")
+          .eq("id", user.id)
+          .single()
+
+        if (newRoleError) {
+          console.error("Error fetching new user role:", newRoleError)
+          throw new Error("新しいユーザーロールの取得に失敗しました")
+        }
+
+        userRole = newRole
+      } else {
+        throw new Error("ユーザーロールの取得に失敗しました")
+      }
     }
 
+    const userRoleData = userRole || { role: "student", is_approved: true }
+
     // 企業アカウントの場合
-    if (userRole?.role === "company") {
+    if (userRoleData.role === "company") {
       // 承認されていない場合は保留ページにリダイレクト
-      if (userRole.is_approved === false) {
+      if (userRoleData.is_approved === false) {
         return redirect("/company/pending")
       }
 
@@ -126,6 +162,7 @@ export default async function DashboardPage() {
 
       if (jobsError) {
         console.error("Error fetching jobs:", jobsError)
+        throw new Error("求人情報の取得に失敗しました")
       }
 
       // 型アサーションを使用して、jobsDataをJob[]型として扱う
@@ -163,6 +200,7 @@ export default async function DashboardPage() {
 
         if (applicationsError) {
           console.error("Error fetching applications:", applicationsError)
+          throw new Error("応募情報の取得に失敗しました")
         } else {
           applications = applicationsData as Application[]
         }
@@ -182,34 +220,72 @@ export default async function DashboardPage() {
         }
       })
 
-      // 企業情報を設定
-      const company: {
-        id: string
-        company_name: string
-        email: string | undefined | null
-        is_approved: boolean | null
-        industry: string | null
-        company_size: string | null
-        founded_year: string | null
-        location: string | null
-        description: string | null
-        website_url: string | null
-        logo_url: string | null
-      } = {
-        id: user.id,
-        company_name: user.email?.split("@")[0] || "企業名未設定",
-        email: user.email,
-        is_approved: userRole?.is_approved,
-        industry: null,
-        company_size: null,
-        founded_year: null,
-        location: null,
-        description: null,
-        website_url: null,
-        logo_url: null,
+      // 企業情報を取得
+      const { data: companyData, error: companyError } = await supabase
+        .from("companies")
+        .select("*")
+        .eq("id", user.id)
+        .single()
+
+      // 企業情報が存在しない場合は作成
+      let companyInfo: CompanyDashboardClientProps["company"] | null = null
+      if (companyError && companyError.code === "PGRST116") {
+        // デフォルトの企業情報を作成
+        const { data: newCompany, error: insertCompanyError } = await supabase
+          .from("companies")
+          .insert([
+            {
+              id: user.id,
+              name: user.email?.split("@")[0] || "企業名未設定",
+              industry: null,
+              location: null,
+              size: null,
+              description: null,
+              website_url: null,
+              logo_url: null,
+            },
+          ])
+          .select()
+          .single()
+
+        if (insertCompanyError) {
+          console.error("Error creating company:", insertCompanyError)
+          throw new Error("企業情報の作成に失敗しました")
+        }
+
+        // 取得したデータをCompanyDashboardClientPropsのcompany型に変換
+        companyInfo = {
+          id: newCompany.id,
+          company_name: newCompany.name,
+          email: user.email,
+          industry: newCompany.industry,
+          location: newCompany.location,
+          company_size: newCompany.size,
+          description: newCompany.description,
+          website_url: newCompany.website_url,
+          logo_url: newCompany.logo_url,
+        }
+      } else if (companyError) {
+        console.error("Error fetching company:", companyError)
+        throw new Error("企業情報の取得に失敗しました")
+      } else {
+        // 取得したデータをCompanyDashboardClientPropsのcompany型に変換
+        companyInfo = {
+          id: companyData.id,
+          company_name: companyData.name,
+          email: user.email,
+          industry: companyData.industry,
+          location: companyData.location,
+          company_size: companyData.size,
+          description: companyData.description,
+          website_url: companyData.website_url,
+          logo_url: companyData.logo_url,
+        }
       }
 
-      return <CompanyDashboardClient user={user} company={company} jobs={jobs} applications={transformedApplications} />
+      return (
+        <CompanyDashboardClient user={user} company={companyInfo} jobs={jobs} applications={transformedApplications} />
+      )
     }
 
     // 学生ダッシュボードの処理
@@ -220,8 +296,40 @@ export default async function DashboardPage() {
       .eq("id", user.id)
       .single()
 
-    if (profileError && profileError.code !== "PGRST116") {
+    // プロフィールが存在しない場合は作成
+    let studentProfile = null
+    if (profileError && profileError.code === "PGRST116") {
+      // デフォルトのプロフィールを作成
+      const { data: newProfile, error: insertProfileError } = await supabase
+        .from("student_profiles")
+        .insert([
+          {
+            id: user.id,
+            first_name: null,
+            last_name: null,
+            university: null,
+            major: null,
+            graduation_year: null,
+            skills: [],
+            bio: null,
+            avatar_url: null,
+            resume_url: null,
+          },
+        ])
+        .select()
+        .single()
+
+      if (insertProfileError) {
+        console.error("Error creating profile:", insertProfileError)
+        throw new Error("プロフィールの作成に失敗しました")
+      }
+
+      studentProfile = newProfile
+    } else if (profileError) {
       console.error("Error fetching profile:", profileError)
+      throw new Error("プロフィールの取得に失敗しました")
+    } else {
+      studentProfile = profile
     }
 
     // 応募履歴を取得
@@ -248,6 +356,7 @@ export default async function DashboardPage() {
 
     if (applicationsError) {
       console.error("Error fetching applications:", applicationsError)
+      throw new Error("応募履歴の取得に失敗しました")
     }
 
     // アプリケーションデータを変換
@@ -295,6 +404,7 @@ export default async function DashboardPage() {
 
     if (savedJobsError) {
       console.error("Error fetching saved jobs:", savedJobsError)
+      throw new Error("保存済み求人の取得に失敗しました")
     }
 
     // 保存済み求人データを変換
@@ -356,6 +466,7 @@ export default async function DashboardPage() {
 
     if (recommendedJobsError) {
       console.error("Error fetching recommended jobs:", recommendedJobsError)
+      throw new Error("おすすめ求人の取得に失敗しました")
     }
 
     // おすすめ求人データを変換
@@ -390,8 +501,8 @@ export default async function DashboardPage() {
     return (
       <DashboardClient
         user={user}
-        userRole={userRole?.role || "student"}
-        profile={profile || null}
+        userRole={userRoleData.role}
+        profile={studentProfile || null}
         applications={transformedApplications}
         savedJobs={transformedSavedJobs}
         recommendedJobs={transformedRecommendedJobs}
@@ -404,6 +515,9 @@ export default async function DashboardPage() {
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <h1 className="text-2xl font-bold mb-4">エラーが発生しました</h1>
         <p className="mb-6">ダッシュボードの読み込み中にエラーが発生しました。</p>
+        <p className="mb-6 text-sm text-gray-600">
+          {error instanceof Error ? error.message : "不明なエラーが発生しました"}
+        </p>
         <a
           href="/auth/signin?redirect=/dashboard"
           className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"

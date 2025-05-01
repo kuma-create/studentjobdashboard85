@@ -9,15 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { formatDate, formatCurrency } from "@/lib/utils"
-
-type DashboardClientProps = {
-  user: any
-  userRole: string
-  profile: any
-  applications: any[]
-  savedJobs: any[]
-  recommendedJobs: any[]
-}
+import type { DashboardClientProps } from "./types"
 
 export default function DashboardClient({
   user,
@@ -191,9 +183,11 @@ export default function DashboardClient({
                             {job.location}
                           </Badge>
                         )}
-                        {job.salary_min && job.salary_max && (
+                        {(job.salary_min || job.salary_max) && (
                           <Badge variant="outline" className="text-xs">
-                            {formatCurrency(job.salary_min)}〜{formatCurrency(job.salary_max)}
+                            {job.salary_min ? formatCurrency(Number(job.salary_min)) : ""}
+                            {job.salary_min && job.salary_max ? "〜" : ""}
+                            {job.salary_max ? formatCurrency(Number(job.salary_max)) : ""}
                           </Badge>
                         )}
                       </div>
@@ -348,9 +342,11 @@ export default function DashboardClient({
                             {saved.jobs.location}
                           </Badge>
                         )}
-                        {saved.jobs?.salary_min && saved.jobs?.salary_max && (
+                        {(saved.jobs?.salary_min || saved.jobs?.salary_max) && (
                           <Badge variant="outline" className="text-xs">
-                            {formatCurrency(saved.jobs.salary_min)}〜{formatCurrency(saved.jobs.salary_max)}
+                            {saved.jobs.salary_min ? formatCurrency(Number(saved.jobs.salary_min)) : ""}
+                            {saved.jobs.salary_min && saved.jobs.salary_max ? "〜" : ""}
+                            {saved.jobs.salary_max ? formatCurrency(Number(saved.jobs.salary_max)) : ""}
                           </Badge>
                         )}
                       </div>
