@@ -1,14 +1,13 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
-import type { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import type { Database } from "../database.types"
 
-// API ルートハンドラー用のSupabaseクライアント
-export async function createRouteHandlerClient(request: NextRequest, response?: NextResponse) {
-  const cookieStore = await cookies()
+export async function createRouteHandlerClient(request: NextRequest) {
+  const cookieStore = cookies()
+  const response = NextResponse.next()
 
-  return createServerClient<Database>(
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -18,11 +17,15 @@ export async function createRouteHandlerClient(request: NextRequest, response?: 
         },
         set(name: string, value: string, options: any) {
           cookieStore.set({ name, value, ...options })
+          response.cookies.set({ name, value, ...options })
         },
         remove(name: string, options: any) {
           cookieStore.set({ name, value: "", ...options })
+          response.cookies.set({ name, value: "", ...options })
         },
       },
     },
   )
+
+  return supabase
 }

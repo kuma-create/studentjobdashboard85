@@ -3,7 +3,7 @@ import { cookies } from "next/headers"
 import type { Database } from "../database.types"
 
 export async function createClient() {
-  const cookieStore = await cookies()
+  const cookieStore = cookies()
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,7 +13,6 @@ export async function createClient() {
         get(name: string) {
           return cookieStore.get(name)?.value
         },
-        // 読み取り専用のため、set と remove は空の実装にする
         set(name: string, value: string, options: any) {
           // Server Components では cookie を設定できないため、何もしない
           console.warn(
