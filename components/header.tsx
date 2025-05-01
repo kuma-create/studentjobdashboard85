@@ -59,7 +59,7 @@ export function Header() {
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2">
             <Image
-              src="/images/gakuten-logo.png"
+              src="/gakuten-logo.png"
               alt="GAKUTEN Logo"
               width={120}
               height={40}
@@ -259,13 +259,7 @@ export function Header() {
         <div className="fixed inset-0 top-16 z-50 bg-background p-4">
           <nav className="flex flex-col space-y-4">
             <Link href="/" className="flex items-center justify-center mb-4" onClick={closeMobileMenu}>
-              <Image
-                src="/images/gakuten-logo.png"
-                alt="GAKUTEN Logo"
-                width={120}
-                height={40}
-                className="object-contain"
-              />
+              <Image src="/gakuten-logo.png" alt="GAKUTEN Logo" width={120} height={40} className="object-contain" />
             </Link>
             <Link href="/jobs" className="flex items-center py-2 text-lg font-medium" onClick={closeMobileMenu}>
               求人を探す
