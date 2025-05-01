@@ -45,8 +45,10 @@ export async function signUp(formData: FormData) {
         ])
 
         if (roleError) {
-          console.error("ロール設定エラー:", roleError)
-          return { success: false, error: `ロール設定エラー: ${roleError.message}` }
+          console.error("ロール設定エラー:", JSON.stringify(roleError))
+          // エラーメッセージがundefinedの場合は汎用的なメッセージを表示
+          const errorMessage = roleError.message || "ユーザーロールの設定中にエラーが発生しました"
+          return { success: false, error: `ロール設定エラー: ${errorMessage}` }
         }
       }
 
