@@ -10,11 +10,60 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { formatDate } from "@/lib/utils"
 
+// 型定義を追加
+interface Job {
+  id: string
+  title: string
+  description: string
+  company_id: string
+  location: string | null
+  job_type: string | null
+  salary_range: string | null
+  requirements: string | null
+  application_deadline: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string | null
+}
+
+interface Application {
+  id: string
+  status: string
+  created_at: string
+  student_id?: string
+  student_profiles?: {
+    id: string | null
+    first_name: string | null
+    last_name: string | null
+    university: string | null
+    graduation_year: string | null
+    avatar_url: string | null
+  } | null
+  jobs: {
+    id: string | null
+    job_title: string | null
+  }
+}
+
+interface Company {
+  id: string
+  company_name: string
+  email: string | undefined | null
+  is_approved: boolean | null
+  industry: string | null
+  company_size: string | null
+  founded_year: string | null
+  location: string | null
+  description: string | null
+  website_url: string | null
+  logo_url: string | null
+}
+
 type CompanyDashboardClientProps = {
   user: any
-  company: any
-  jobs: any[]
-  applications: any[]
+  company: Company
+  jobs: Job[]
+  applications: Application[]
 }
 
 export default function CompanyDashboardClient({ user, company, jobs, applications }: CompanyDashboardClientProps) {
