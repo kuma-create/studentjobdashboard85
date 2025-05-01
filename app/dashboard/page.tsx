@@ -95,10 +95,13 @@ export default async function DashboardPage() {
 
     // セッションがない場合はログインページにリダイレクト
     if (!session) {
+      // リダイレクト前にログを出力
+      console.log("No session found, redirecting to signin page")
       return redirect("/auth/signin?redirect=/dashboard")
     }
 
     const user = session.user
+    console.log("User authenticated:", user.id)
 
     // ユーザーロールを取得
     let { data: userRole, error: roleError } = await supabase
@@ -113,6 +116,7 @@ export default async function DashboardPage() {
       // ユーザーロールが存在しない場合は作成
       if (roleError.code === "PGRST116") {
         // レコードが見つからないエラー
+        console.log("User role not found, creating default student role")
         const { error: insertError } = await supabase.from("user_roles").insert([
           {
             id: user.id,
@@ -139,17 +143,21 @@ export default async function DashboardPage() {
         }
 
         userRole = newRole
+        console.log("Created new user role:", userRole)
       } else {
         throw new Error("ユーザーロールの取得に失敗しました")
       }
     }
 
     const userRoleData = userRole || { role: "student", is_approved: true }
+    console.log("User role:", userRoleData)
 
     // 企業アカウントの場合
     if (userRoleData.role === "company") {
+      console.log("Processing company dashboard")
       // 承認されていない場合は保留ページにリダイレクト
       if (userRoleData.is_approved === false) {
+        console.log("Company not approved, redirecting to pending page")
         return redirect("/company/pending")
       }
 
@@ -165,8 +173,10 @@ export default async function DashboardPage() {
         throw new Error("求人情報の取得に失敗しました")
       }
 
+      console.log(`Fetched ${jobsData?.length || 0} jobs for company`)
+
       // 型アサーションを使用して、jobsDataをJob[]型として扱う
-      const jobs = jobsData as Job[]
+      const jobs = (jobsData || []) as Job[]
 
       // jobIdsを取得（空の配列の場合は考慮済み）
       const jobIds = jobs.map((job) => job.id)
@@ -203,6 +213,7 @@ export default async function DashboardPage() {
           throw new Error("応募情報の取得に失敗しました")
         } else {
           applications = applicationsData as Application[]
+          console.log(`Fetched ${applications.length} applications for company jobs`)
         }
       }
 
@@ -231,6 +242,7 @@ export default async function DashboardPage() {
       let companyInfo: CompanyDashboardClientProps["company"] | null = null
       if (companyError && companyError.code === "PGRST116") {
         // デフォルトの企業情報を作成
+        console.log("Company data not found, creating default company profile")
         const { data: newCompany, error: insertCompanyError } = await supabase
           .from("companies")
           .insert([
@@ -257,7 +269,7 @@ export default async function DashboardPage() {
         companyInfo = {
           id: newCompany.id,
           company_name: newCompany.name,
-          email: user.email,
+          email: user.email || null,
           industry: newCompany.industry,
           location: newCompany.location,
           company_size: newCompany.size,
@@ -265,6 +277,7 @@ export default async function DashboardPage() {
           website_url: newCompany.website_url,
           logo_url: newCompany.logo_url,
         }
+        console.log("Created new company profile")
       } else if (companyError) {
         console.error("Error fetching company:", companyError)
         throw new Error("企業情報の取得に失敗しました")
@@ -273,7 +286,7 @@ export default async function DashboardPage() {
         companyInfo = {
           id: companyData.id,
           company_name: companyData.name,
-          email: user.email,
+          email: user.email || null,
           industry: companyData.industry,
           location: companyData.location,
           company_size: companyData.size,
@@ -281,14 +294,17 @@ export default async function DashboardPage() {
           website_url: companyData.website_url,
           logo_url: companyData.logo_url,
         }
+        console.log("Fetched existing company profile")
       }
 
+      console.log("Rendering company dashboard")
       return (
         <CompanyDashboardClient user={user} company={companyInfo} jobs={jobs} applications={transformedApplications} />
       )
     }
 
     // 学生ダッシュボードの処理
+    console.log("Processing student dashboard")
     // 学生プロフィールを取得
     const { data: profile, error: profileError } = await supabase
       .from("student_profiles")
@@ -300,6 +316,7 @@ export default async function DashboardPage() {
     let studentProfile = null
     if (profileError && profileError.code === "PGRST116") {
       // デフォルトのプロフィールを作成
+      console.log("Student profile not found, creating default profile")
       const { data: newProfile, error: insertProfileError } = await supabase
         .from("student_profiles")
         .insert([
@@ -325,11 +342,13 @@ export default async function DashboardPage() {
       }
 
       studentProfile = newProfile
+      console.log("Created new student profile")
     } else if (profileError) {
       console.error("Error fetching profile:", profileError)
       throw new Error("プロフィールの取得に失敗しました")
     } else {
       studentProfile = profile
+      console.log("Fetched existing student profile")
     }
 
     // 応募履歴を取得
@@ -359,8 +378,10 @@ export default async function DashboardPage() {
       throw new Error("応募履歴の取得に失敗しました")
     }
 
+    console.log(`Fetched ${applications?.length || 0} applications for student`)
+
     // アプリケーションデータを変換
-    const transformedApplications = (applications as Application[]).map((app) => {
+    const transformedApplications = (applications || []).map((app) => {
       // job_postingsとcompaniesが存在するか確認
       const jobPosting = app.job_postings || { id: null, title: null, companies: null }
       const company = jobPosting.companies || { id: null, name: null, logo_url: null }
@@ -407,8 +428,10 @@ export default async function DashboardPage() {
       throw new Error("保存済み求人の取得に失敗しました")
     }
 
+    console.log(`Fetched ${savedJobs?.length || 0} saved jobs for student`)
+
     // 保存済み求人データを変換
-    const transformedSavedJobs = (savedJobs as SavedJob[]).map((job) => {
+    const transformedSavedJobs = (savedJobs || []).map((job) => {
       // job_postingsとcompaniesが存在するか確認
       const jobPosting = job.job_postings || {
         id: null,
@@ -469,8 +492,10 @@ export default async function DashboardPage() {
       throw new Error("おすすめ求人の取得に失敗しました")
     }
 
+    console.log(`Fetched ${recommendedJobs?.length || 0} recommended jobs`)
+
     // おすすめ求人データを変換
-    const transformedRecommendedJobs = (recommendedJobs as RecommendedJob[]).map((job) => {
+    const transformedRecommendedJobs = (recommendedJobs || []).map((job) => {
       // companiesが存在するか確認
       const company = job.companies || { id: null, name: null, logo_url: null }
 
@@ -498,6 +523,7 @@ export default async function DashboardPage() {
       }
     })
 
+    console.log("Rendering student dashboard")
     return (
       <DashboardClient
         user={user}

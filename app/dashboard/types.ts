@@ -12,7 +12,7 @@ export type DashboardClientProps = {
     company: {
       id: string
       company_name: string
-      email: string | undefined | null
+      email: string | null
       industry: string | null
       location: string | null
       company_size: string | null

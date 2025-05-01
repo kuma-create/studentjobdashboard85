@@ -2,16 +2,10 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import type { Database } from "../database.types"
 
-/**
- * サーバーサイドで Supabase クライアントを作成する関数
- * App Router のサーバーコンポーネントで使用することを想定しています
- *
- * @returns Supabase クライアントインスタンス
- */
 export async function createClient() {
   const cookieStore = await cookies()
 
-  return createServerClient<Database>(
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -19,15 +13,22 @@ export async function createClient() {
         get(name: string) {
           return cookieStore.get(name)?.value
         },
-        // App Router のサーバーコンポーネントでは Cookie の設定は
-        // レスポンスヘッダーを通じて行われるため、ここでは何もしない
+        // 読み取り専用のため、set と remove は空の実装にする
         set(name: string, value: string, options: any) {
-          // サーバーアクションや API ルートでは必要に応じて実装
+          // Server Components では cookie を設定できないため、何もしない
+          console.warn(
+            "Warning: Attempting to set cookie in a Server Component. This is not supported and will not work.",
+          )
         },
         remove(name: string, options: any) {
-          // サーバーアクションや API ルートでは必要に応じて実装
+          // Server Components では cookie を削除できないため、何もしない
+          console.warn(
+            "Warning: Attempting to remove cookie in a Server Component. This is not supported and will not work.",
+          )
         },
       },
     },
   )
+
+  return supabase
 }
