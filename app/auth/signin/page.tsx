@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
@@ -24,17 +24,28 @@ export default function SignInPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectPath = searchParams.get("redirect") || "/dashboard"
+  const redirectAttempted = useRef(false)
 
   const supabase = createClientComponentClient()
 
   // 既にログインしているかチェック
   useEffect(() => {
     const checkSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      if (data.session) {
-        console.log("既存のセッションを検出しました。リダイレクトします。")
-        setIsRedirecting(true)
-        window.location.href = redirectPath
+      // 既にリダイレクト試行済みの場合は処理しない
+      if (redirectAttempted.current) return
+
+      try {
+        const { data } = await supabase.auth.getSession()
+        if (data.session) {
+          console.log("既存のセッションを検出しました。リダイレクトします。")
+          redirectAttempted.current = true
+          setIsRedirecting(true)
+
+          // 直接URLを変更してリダイレクト
+          window.location.href = redirectPath
+        }
+      } catch (error) {
+        console.error("セッションチェックエラー:", error)
       }
     }
 
@@ -43,6 +54,10 @@ export default function SignInPage() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // 既にリダイレクト試行済みの場合は処理しない
+    if (redirectAttempted.current) return
+
     setError(null)
     setIsLoading(true)
 
@@ -59,9 +74,10 @@ export default function SignInPage() {
       }
 
       console.log("ログイン成功:", data)
+      redirectAttempted.current = true
       setIsRedirecting(true)
 
-      // 強制的にページ全体をリロード
+      // 直接URLを変更してリダイレクト
       console.log(`リダイレクト先: ${redirectPath}`)
       window.location.href = redirectPath
     } catch (error: any) {
@@ -78,6 +94,7 @@ export default function SignInPage() {
       <div className="flex h-screen w-full flex-col items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-red-600" />
         <p className="mt-4 text-lg">ダッシュボードにリダイレクトしています...</p>
+        <p className="mt-2 text-sm text-gray-500">しばらくお待ちください...</p>
       </div>
     )
   }
@@ -134,7 +151,7 @@ export default function SignInPage() {
                 </Button>
               </div>
             </div>
-            <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isLoading}>
+            <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isLoading || isRedirecting}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

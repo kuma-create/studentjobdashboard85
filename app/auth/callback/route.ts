@@ -19,34 +19,45 @@ export async function GET(request: NextRequest) {
   const redirectPath = requestUrl.searchParams.get("redirect") || "/dashboard"
   console.log("Redirect path from callback:", redirectPath)
 
-  // レスポンスオブジェクトを作成
-  const response = NextResponse.redirect(`${requestUrl.origin}${redirectPath}`)
+  try {
+    // クッキーストアを取得
+    const cookieStore = cookies()
 
-  // クッキーストアを取得
-  const cookieStore = cookies()
+    // レスポンスオブジェクトを作成
+    const response = NextResponse.redirect(`${requestUrl.origin}${redirectPath}`)
 
-  // Supabaseクライアントを作成
-  const supabase = createServerClient<Database, "public">(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-        set(name: string, value: string, options: any) {
-          // レスポンスオブジェクトにクッキーを設定
-          response.cookies.set({ name, value, ...options })
-        },
-        remove(name: string, options: any) {
-          // レスポンスオブジェクトからクッキーを削除
-          response.cookies.delete({ name, ...options })
+    // Supabaseクライアントを作成
+    const supabase = createServerClient<Database, "public">(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // レスポンスオブジェクトにクッキーを設定
+            response.cookies.set({
+              name,
+              value,
+              ...options,
+              // クッキーの有効期限を長めに設定
+              maxAge: 60 * 60 * 24 * 7, // 7日間
+              path: "/",
+            })
+          },
+          remove(name: string, options: any) {
+            // レスポンスオブジェクトからクッキーを削除
+            response.cookies.delete({
+              name,
+              ...options,
+              path: "/",
+            })
+          },
         },
       },
-    },
-  )
+    )
 
-  try {
     // コードをセッションに交換
     console.log("Exchanging code for session")
     const { error } = await supabase.auth.exchangeCodeForSession(code)
@@ -61,6 +72,13 @@ export async function GET(request: NextRequest) {
 
     // 成功した場合はダッシュボードにリダイレクト
     console.log("Redirecting to:", redirectPath)
+
+    // すべてのクッキーをログに出力（デバッグ用）
+    console.log(
+      "Cookies set:",
+      Array.from(response.cookies.getAll()).map((c) => c.name),
+    )
+
     return response
   } catch (error) {
     console.error("Unexpected error during auth:", error)
