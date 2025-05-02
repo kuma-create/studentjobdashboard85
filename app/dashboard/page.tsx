@@ -86,7 +86,7 @@ interface RecommendedJob {
 export default async function DashboardPage() {
   try {
     // サーバーサイドのSupabaseクライアントを作成
-    const supabase = await createClient()
+    const supabase = createClient()
 
     // ユーザー認証チェック
     const {
