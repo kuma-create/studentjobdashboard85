@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
@@ -20,11 +20,26 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectPath = searchParams.get("redirect") || "/dashboard"
 
   const supabase = createClientComponentClient()
+
+  // 既にログインしているかチェック
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession()
+      if (data.session) {
+        console.log("既存のセッションを検出しました。リダイレクトします。")
+        setIsRedirecting(true)
+        window.location.href = redirectPath
+      }
+    }
+
+    checkSession()
+  }, [redirectPath, supabase.auth])
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,22 +47,39 @@ export default function SignInPage() {
     setIsLoading(true)
 
     try {
+      console.log(`ログイン試行: ${email}`)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) {
+        console.error("ログインエラー:", error)
         throw error
       }
 
-      // Force a hard navigation to the dashboard
+      console.log("ログイン成功:", data)
+      setIsRedirecting(true)
+
+      // 強制的にページ全体をリロード
+      console.log(`リダイレクト先: ${redirectPath}`)
       window.location.href = redirectPath
     } catch (error: any) {
+      console.error("ログイン処理エラー:", error)
       setError(error.message || "ログインに失敗しました。メールアドレスとパスワードを確認してください。")
+      setIsRedirecting(false)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (isRedirecting) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-red-600" />
+        <p className="mt-4 text-lg">ダッシュボードにリダイレクトしています...</p>
+      </div>
+    )
   }
 
   return (

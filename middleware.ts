@@ -39,7 +39,7 @@ function isAuthRequired(path: string): boolean {
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
-  console.log("ミドルウェアチェック:", path)
+  console.log("ミドルウェアパスチェック:", path)
 
   // 認証が必要ないページはそのまま通す
   if (!isAuthRequired(path)) {
@@ -48,11 +48,29 @@ export function middleware(request: NextRequest) {
   }
 
   // クッキーからセッションの存在を確認
-  const hasAccessToken = request.cookies.has("sb-access-token") || request.cookies.has("sb-access-token-secure")
-  const hasRefreshToken = request.cookies.has("sb-refresh-token") || request.cookies.has("sb-refresh-token-secure")
-  const hasSession = hasAccessToken || hasRefreshToken
+  const cookieNames = [
+    "sb-access-token",
+    "sb-refresh-token",
+    "sb-access-token-secure",
+    "sb-refresh-token-secure",
+    "supabase-auth-token",
+  ]
 
-  console.log("認証チェック - アクセストークン:", hasAccessToken, "リフレッシュトークン:", hasRefreshToken)
+  let hasSession = false
+
+  for (const name of cookieNames) {
+    if (request.cookies.has(name)) {
+      console.log(`クッキー ${name} が見つかりました`)
+      hasSession = true
+      break
+    }
+  }
+
+  // すべてのクッキーをログに出力（デバッグ用）
+  console.log(
+    "すべてのクッキー:",
+    Array.from(request.cookies.getAll()).map((c) => c.name),
+  )
 
   // セッションがない場合はログインページにリダイレクト
   if (!hasSession) {
