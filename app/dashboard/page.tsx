@@ -104,310 +104,376 @@ export default async function DashboardPage() {
     console.log("User authenticated:", user.id)
 
     // ユーザーロールを取得
-    let { data: userRole, error: roleError } = await supabase
-      .from("user_roles")
-      .select("role, is_approved")
-      .eq("id", user.id)
-      .single()
+    try {
+      let { data: userRole, error: roleError } = await supabase
+        .from("user_roles")
+        .select("role, is_approved")
+        .eq("id", user.id)
+        .single()
 
-    if (roleError) {
-      console.error("Error fetching user role:", roleError)
+      if (roleError) {
+        console.error("Error fetching user role:", roleError)
 
-      // ユーザーロールが存在しない場合は作成
-      if (roleError.code === "PGRST116") {
-        // レコードが見つからないエラー
-        console.log("User role not found, creating default student role")
-        const { error: insertError } = await supabase.from("user_roles").insert([
-          {
-            id: user.id,
-            role: "student", // デフォルトは学生ロール
-            is_approved: true,
-          },
-        ])
+        // ユーザーロールが存在しない場合は作成
+        if (roleError.code === "PGRST116") {
+          // レコードが見つからないエラー
+          console.log("User role not found, creating default student role")
+          const { error: insertError } = await supabase.from("user_roles").insert([
+            {
+              id: user.id,
+              role: "student", // デフォルトは学生ロール
+              is_approved: true,
+            },
+          ])
 
-        if (insertError) {
-          console.error("Error creating user role:", insertError)
-          throw new Error("ユーザーロールの作成に失敗しました")
+          if (insertError) {
+            console.error("Error creating user role:", insertError)
+            throw new Error("ユーザーロールの作成に失敗しました")
+          }
+
+          // 作成したロールを取得
+          const { data: newRole, error: newRoleError } = await supabase
+            .from("user_roles")
+            .select("role, is_approved")
+            .eq("id", user.id)
+            .single()
+
+          if (newRoleError) {
+            console.error("Error fetching new user role:", newRoleError)
+            throw new Error("新しいユーザーロールの取得に失敗しました")
+          }
+
+          userRole = newRole
+          console.log("Created new user role:", userRole)
+        } else {
+          throw new Error("ユーザーロールの取得に失敗しました")
+        }
+      }
+
+      const userRoleData = userRole || { role: "student", is_approved: true }
+      console.log("User role:", userRoleData)
+
+      // 企業アカウントの場合
+      if (userRoleData.role === "company") {
+        console.log("Processing company dashboard")
+        // 承認されていない場合は保留ページにリダイレクト
+        if (userRoleData.is_approved === false) {
+          console.log("Company not approved, redirecting to pending page")
+          return redirect("/company/pending")
         }
 
-        // 作成したロールを取得
-        const { data: newRole, error: newRoleError } = await supabase
-          .from("user_roles")
-          .select("role, is_approved")
+        // 求人情報を取得
+        const { data: jobsData = [], error: jobsError } = await supabase
+          .from("job_postings")
+          .select("*")
+          .eq("company_id", user.id)
+          .order("created_at", { ascending: false })
+
+        if (jobsError) {
+          console.error("Error fetching jobs:", jobsError)
+          throw new Error("求人情報の取得に失敗しました")
+        }
+
+        console.log(`Fetched ${jobsData?.length || 0} jobs for company`)
+
+        // 型アサーションを使用して、jobsDataをJob[]型として扱う
+        const jobs = (jobsData || []) as Job[]
+
+        // jobIdsを取得（空の配列の場合は考慮済み）
+        const jobIds = jobs.map((job) => job.id)
+
+        // 応募情報を取得 - 空の配列の場合はスキップ
+        let applications: Application[] = []
+        if (jobIds.length > 0) {
+          const { data: applicationsData = [], error: applicationsError } = await supabase
+            .from("applications")
+            .select(`
+              id,
+              status,
+              created_at,
+              student_id,
+              student_profiles (
+                id,
+                first_name,
+                last_name,
+                university,
+                graduation_year,
+                avatar_url
+              ),
+              job_id,
+              job_postings:job_id ( 
+                id,
+                title
+              )
+            `)
+            .in("job_id", jobIds)
+            .order("created_at", { ascending: false })
+
+          if (applicationsError) {
+            console.error("Error fetching applications:", applicationsError)
+            throw new Error("応募情報の取得に失敗しました")
+          } else {
+            applications = applicationsData as Application[]
+            console.log(`Fetched ${applications.length} applications for company jobs`)
+          }
+        }
+
+        // アプリケーションデータを変換
+        const transformedApplications = applications.map((app) => {
+          // job_postingsが存在するか確認
+          const jobPosting = app.job_postings || { id: null, title: null }
+
+          return {
+            ...app,
+            jobs: {
+              id: jobPosting.id,
+              job_title: jobPosting.title,
+            },
+          }
+        })
+
+        // 企業情報を取得
+        const { data: companyData, error: companyError } = await supabase
+          .from("companies")
+          .select("*")
           .eq("id", user.id)
           .single()
 
-        if (newRoleError) {
-          console.error("Error fetching new user role:", newRoleError)
-          throw new Error("新しいユーザーロールの取得に失敗しました")
+        // 企業情報が存在しない場合は作成
+        let companyInfo: CompanyDashboardClientProps["company"] | null = null
+        if (companyError && companyError.code === "PGRST116") {
+          // デフォルトの企業情報を作成
+          console.log("Company data not found, creating default company profile")
+          const { data: newCompany, error: insertCompanyError } = await supabase
+            .from("companies")
+            .insert([
+              {
+                id: user.id,
+                name: user.email?.split("@")[0] || "企業名未設定",
+                industry: null,
+                location: null,
+                size: null,
+                description: null,
+                website_url: null,
+                logo_url: null,
+              },
+            ])
+            .select()
+            .single()
+
+          if (insertCompanyError) {
+            console.error("Error creating company:", insertCompanyError)
+            throw new Error("企業情報の作成に失敗しました")
+          }
+
+          // 取得したデータをCompanyDashboardClientPropsのcompany型に変換
+          companyInfo = {
+            id: newCompany.id,
+            company_name: newCompany.name,
+            email: user.email || null,
+            industry: newCompany.industry,
+            location: newCompany.location,
+            company_size: newCompany.size,
+            description: newCompany.description,
+            website_url: newCompany.website_url,
+            logo_url: newCompany.logo_url,
+          }
+          console.log("Created new company profile")
+        } else if (companyError) {
+          console.error("Error fetching company:", companyError)
+          throw new Error("企業情報の取得に失敗しました")
+        } else {
+          // 取得したデータをCompanyDashboardClientPropsのcompany型に変換
+          companyInfo = {
+            id: companyData.id,
+            company_name: companyData.name,
+            email: user.email || null,
+            industry: companyData.industry,
+            location: companyData.location,
+            company_size: companyData.size,
+            description: companyData.description,
+            website_url: companyData.website_url,
+            logo_url: companyData.logo_url,
+          }
+          console.log("Fetched existing company profile")
         }
 
-        userRole = newRole
-        console.log("Created new user role:", userRole)
-      } else {
-        throw new Error("ユーザーロールの取得に失敗しました")
-      }
-    }
-
-    const userRoleData = userRole || { role: "student", is_approved: true }
-    console.log("User role:", userRoleData)
-
-    // 企業アカウントの場合
-    if (userRoleData.role === "company") {
-      console.log("Processing company dashboard")
-      // 承認されていない場合は保留ページにリダイレクト
-      if (userRoleData.is_approved === false) {
-        console.log("Company not approved, redirecting to pending page")
-        return redirect("/company/pending")
+        console.log("Rendering company dashboard")
+        return (
+          <CompanyDashboardClient user={user} company={companyInfo} jobs={jobs} applications={transformedApplications} />
+        )
       }
 
-      // 求人情報を取得
-      const { data: jobsData = [], error: jobsError } = await supabase
-        .from("job_postings")
+      // 学生ダッシュボードの処理
+      console.log("Processing student dashboard")
+      // 学生プロフィールを取得
+      const { data: profile, error: profileError } = await supabase
+        .from("student_profiles")
         .select("*")
-        .eq("company_id", user.id)
+        .eq("id", user.id)
+        .single()
+
+      // プロフィールが存在しない場合は作成
+      let studentProfile = null
+      if (profileError && profileError.code === "PGRST116") {
+        // デフォルトのプロフィールを作成
+        console.log("Student profile not found, creating default profile")
+        const { data: newProfile, error: insertProfileError } = await supabase
+          .from("student_profiles")
+          .insert([
+            {
+              id: user.id,
+              first_name: null,
+              last_name: null,
+              university: null,
+              major: null,
+              graduation_year: null,
+              skills: [],
+              bio: null,
+              avatar_url: null,
+              resume_url: null,
+            },
+          ])
+          .select()
+          .single()
+
+        if (insertProfileError) {
+          console.error("Error creating profile:", insertProfileError)
+          throw new Error("プロフィールの作成に失敗しました")
+        }
+
+        studentProfile = newProfile
+        console.log("Created new student profile")
+      } else if (profileError) {
+        console.error("Error fetching profile:", profileError)
+        throw new Error("プロフィールの取得に失敗しました")
+      } else {
+        studentProfile = profile
+        console.log("Fetched existing student profile")
+      }
+
+      // 応募履歴を取得
+      const { data: applications = [], error: applicationsError } = await supabase
+        .from("applications")
+        .select(`
+          id,
+          status,
+          created_at,
+          job_id,
+          job_postings:job_id (
+            id,
+            title,
+            company_id,
+            companies:company_id (
+              id,
+              name,
+              logo_url
+            )
+          )
+        `)
+        .eq("student_id", user.id)
         .order("created_at", { ascending: false })
 
-      if (jobsError) {
-        console.error("Error fetching jobs:", jobsError)
-        throw new Error("求人情報の取得に失敗しました")
+      if (applicationsError) {
+        console.error("Error fetching applications:", applicationsError)
+        throw new Error("応募履歴の取得に失敗しました")
       }
 
-      console.log(`Fetched ${jobsData?.length || 0} jobs for company`)
-
-      // 型アサーションを使用して、jobsDataをJob[]型として扱う
-      const jobs = (jobsData || []) as Job[]
-
-      // jobIdsを取得（空の配列の場合は考慮済み）
-      const jobIds = jobs.map((job) => job.id)
-
-      // 応募情報を取得 - 空の配列の場合はスキップ
-      let applications: Application[] = []
-      if (jobIds.length > 0) {
-        const { data: applicationsData = [], error: applicationsError } = await supabase
-          .from("applications")
-          .select(`
-            id,
-            status,
-            created_at,
-            student_id,
-            student_profiles (
-              id,
-              first_name,
-              last_name,
-              university,
-              graduation_year,
-              avatar_url
-            ),
-            job_id,
-            job_postings:job_id ( 
-              id,
-              title
-            )
-          `)
-          .in("job_id", jobIds)
-          .order("created_at", { ascending: false })
-
-        if (applicationsError) {
-          console.error("Error fetching applications:", applicationsError)
-          throw new Error("応募情報の取得に失敗しました")
-        } else {
-          applications = applicationsData as Application[]
-          console.log(`Fetched ${applications.length} applications for company jobs`)
-        }
-      }
+      console.log(`Fetched ${applications?.length || 0} applications for student`)
 
       // アプリケーションデータを変換
-      const transformedApplications = applications.map((app) => {
-        // job_postingsが存在するか確認
-        const jobPosting = app.job_postings || { id: null, title: null }
+      const transformedApplications = (applications || []).map((app) => {
+        // job_postingsとcompaniesが存在するか確認
+        const jobPosting = app.job_postings || { id: null, title: null, companies: null }
+        const company = jobPosting.companies || { id: null, name: null, logo_url: null }
 
         return {
           ...app,
           jobs: {
             id: jobPosting.id,
             job_title: jobPosting.title,
+            companies: {
+              id: company.id,
+              company_name: company.name,
+              logo_url: company.logo_url,
+            },
           },
         }
       })
 
-      // 企業情報を取得
-      const { data: companyData, error: companyError } = await supabase
-        .from("companies")
-        .select("*")
-        .eq("id", user.id)
-        .single()
-
-      // 企業情報が存在しない場合は作成
-      let companyInfo: CompanyDashboardClientProps["company"] | null = null
-      if (companyError && companyError.code === "PGRST116") {
-        // デフォルトの企業情報を作成
-        console.log("Company data not found, creating default company profile")
-        const { data: newCompany, error: insertCompanyError } = await supabase
-          .from("companies")
-          .insert([
-            {
-              id: user.id,
-              name: user.email?.split("@")[0] || "企業名未設定",
-              industry: null,
-              location: null,
-              size: null,
-              description: null,
-              website_url: null,
-              logo_url: null,
-            },
-          ])
-          .select()
-          .single()
-
-        if (insertCompanyError) {
-          console.error("Error creating company:", insertCompanyError)
-          throw new Error("企業情報の作成に失敗しました")
-        }
-
-        // 取得したデータをCompanyDashboardClientPropsのcompany型に変換
-        companyInfo = {
-          id: newCompany.id,
-          company_name: newCompany.name,
-          email: user.email || null,
-          industry: newCompany.industry,
-          location: newCompany.location,
-          company_size: newCompany.size,
-          description: newCompany.description,
-          website_url: newCompany.website_url,
-          logo_url: newCompany.logo_url,
-        }
-        console.log("Created new company profile")
-      } else if (companyError) {
-        console.error("Error fetching company:", companyError)
-        throw new Error("企業情報の取得に失敗しました")
-      } else {
-        // 取得したデータをCompanyDashboardClientPropsのcompany型に変換
-        companyInfo = {
-          id: companyData.id,
-          company_name: companyData.name,
-          email: user.email || null,
-          industry: companyData.industry,
-          location: companyData.location,
-          company_size: companyData.size,
-          description: companyData.description,
-          website_url: companyData.website_url,
-          logo_url: companyData.logo_url,
-        }
-        console.log("Fetched existing company profile")
-      }
-
-      console.log("Rendering company dashboard")
-      return (
-        <CompanyDashboardClient user={user} company={companyInfo} jobs={jobs} applications={transformedApplications} />
-      )
-    }
-
-    // 学生ダッシュボードの処理
-    console.log("Processing student dashboard")
-    // 学生プロフィールを取得
-    const { data: profile, error: profileError } = await supabase
-      .from("student_profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single()
-
-    // プロフィールが存在しない場合は作成
-    let studentProfile = null
-    if (profileError && profileError.code === "PGRST116") {
-      // デフォルトのプロフィールを作成
-      console.log("Student profile not found, creating default profile")
-      const { data: newProfile, error: insertProfileError } = await supabase
-        .from("student_profiles")
-        .insert([
-          {
-            id: user.id,
-            first_name: null,
-            last_name: null,
-            university: null,
-            major: null,
-            graduation_year: null,
-            skills: [],
-            bio: null,
-            avatar_url: null,
-            resume_url: null,
-          },
-        ])
-        .select()
-        .single()
-
-      if (insertProfileError) {
-        console.error("Error creating profile:", insertProfileError)
-        throw new Error("プロフィールの作成に失敗しました")
-      }
-
-      studentProfile = newProfile
-      console.log("Created new student profile")
-    } else if (profileError) {
-      console.error("Error fetching profile:", profileError)
-      throw new Error("プロフィールの取得に失敗しました")
-    } else {
-      studentProfile = profile
-      console.log("Fetched existing student profile")
-    }
-
-    // 応募履歴を取得
-    const { data: applications = [], error: applicationsError } = await supabase
-      .from("applications")
-      .select(`
-        id,
-        status,
-        created_at,
-        job_id,
-        job_postings:job_id (
+      // 保存済み求人を取得
+      const { data: savedJobs = [], error: savedJobsError } = await supabase
+        .from("saved_jobs")
+        .select(`
           id,
-          title,
-          company_id,
-          companies:company_id (
+          created_at,
+          job_id,
+          job_postings:job_id (
             id,
-            name,
-            logo_url
+            title,
+            location,
+            salary_range,
+            company_id,
+            companies:company_id (
+              id,
+              name,
+              logo_url
+            )
           )
-        )
-      `)
-      .eq("student_id", user.id)
-      .order("created_at", { ascending: false })
+        `)
+        .eq("student_id", user.id)
+        .order("created_at", { ascending: false })
 
-    if (applicationsError) {
-      console.error("Error fetching applications:", applicationsError)
-      throw new Error("応募履歴の取得に失敗しました")
-    }
-
-    console.log(`Fetched ${applications?.length || 0} applications for student`)
-
-    // アプリケーションデータを変換
-    const transformedApplications = (applications || []).map((app) => {
-      // job_postingsとcompaniesが存在するか確認
-      const jobPosting = app.job_postings || { id: null, title: null, companies: null }
-      const company = jobPosting.companies || { id: null, name: null, logo_url: null }
-
-      return {
-        ...app,
-        jobs: {
-          id: jobPosting.id,
-          job_title: jobPosting.title,
-          companies: {
-            id: company.id,
-            company_name: company.name,
-            logo_url: company.logo_url,
-          },
-        },
+      if (savedJobsError) {
+        console.error("Error fetching saved jobs:", savedJobsError)
+        throw new Error("保存済み求人の取得に失敗しました")
       }
-    })
 
-    // 保存済み求人を取得
-    const { data: savedJobs = [], error: savedJobsError } = await supabase
-      .from("saved_jobs")
-      .select(`
-        id,
-        created_at,
-        job_id,
-        job_postings:job_id (
+      console.log(`Fetched ${savedJobs?.length || 0} saved jobs for student`)
+
+      // 保存済み求人データを変換
+      const transformedSavedJobs = (savedJobs || []).map((job) => {
+        // job_postingsとcompaniesが存在するか確認
+        const jobPosting = job.job_postings || {
+          id: null,
+          title: null,
+          location: null,
+          salary_range: null,
+          companies: null,
+        }
+        const company = jobPosting.companies || { id: null, name: null, logo_url: null }
+
+        // salary_rangeが存在するか確認してから分割
+        let salaryMin = 0
+        let salaryMax = 0
+
+        if (jobPosting.salary_range) {
+          const salaryParts = jobPosting.salary_range.split("〜")
+          salaryMin = salaryParts[0] ? Number.parseInt(salaryParts[0], 10) || 0 : 0
+          salaryMax = salaryParts[1] ? Number.parseInt(salaryParts[1], 10) || 0 : 0
+        }
+
+        return {
+          ...job,
+          jobs: {
+            id: jobPosting.id,
+            job_title: jobPosting.title,
+            location: jobPosting.location,
+            salary_min: salaryMin,
+            salary_max: salaryMax,
+            companies: {
+              id: company.id,
+              company_name: company.name,
+              logo_url: company.logo_url,
+            },
+          },
+        }
+      })
+
+      // おすすめ求人を取得
+      const { data: recommendedJobs = [], error: recommendedJobsError } = await supabase
+        .from("job_postings")
+        .select(`
           id,
           title,
           location,
@@ -418,46 +484,36 @@ export default async function DashboardPage() {
             name,
             logo_url
           )
-        )
-      `)
-      .eq("student_id", user.id)
-      .order("created_at", { ascending: false })
+        `)
+        .eq("is_active", true)
+        .limit(5)
 
-    if (savedJobsError) {
-      console.error("Error fetching saved jobs:", savedJobsError)
-      throw new Error("保存済み求人の取得に失敗しました")
-    }
-
-    console.log(`Fetched ${savedJobs?.length || 0} saved jobs for student`)
-
-    // 保存済み求人データを変換
-    const transformedSavedJobs = (savedJobs || []).map((job) => {
-      // job_postingsとcompaniesが存在するか確認
-      const jobPosting = job.job_postings || {
-        id: null,
-        title: null,
-        location: null,
-        salary_range: null,
-        companies: null,
-      }
-      const company = jobPosting.companies || { id: null, name: null, logo_url: null }
-
-      // salary_rangeが存在するか確認してから分割
-      let salaryMin = 0
-      let salaryMax = 0
-
-      if (jobPosting.salary_range) {
-        const salaryParts = jobPosting.salary_range.split("〜")
-        salaryMin = salaryParts[0] ? Number.parseInt(salaryParts[0], 10) || 0 : 0
-        salaryMax = salaryParts[1] ? Number.parseInt(salaryParts[1], 10) || 0 : 0
+      if (recommendedJobsError) {
+        console.error("Error fetching recommended jobs:", recommendedJobsError)
+        throw new Error("おすすめ求人の取得に失敗しました")
       }
 
-      return {
-        ...job,
-        jobs: {
-          id: jobPosting.id,
-          job_title: jobPosting.title,
-          location: jobPosting.location,
+      console.log(`Fetched ${recommendedJobs?.length || 0} recommended jobs`)
+
+      // おすすめ求人データを変換
+      const transformedRecommendedJobs = (recommendedJobs || []).map((job) => {
+        // companiesが存在するか確認
+        const company = job.companies || { id: null, name: null, logo_url: null }
+
+        // salary_rangeが存在するか確認してから分割
+        let salaryMin = 0
+        let salaryMax = 0
+
+        if (job.salary_range) {
+          const salaryParts = job.salary_range.split("〜")
+          salaryMin = salaryParts[0] ? Number.parseInt(salaryParts[0], 10) || 0 : 0
+          salaryMax = salaryParts[1] ? Number.parseInt(salaryParts[1], 10) || 0 : 0
+        }
+
+        return {
+          id: job.id,
+          job_title: job.title,
+          location: job.location,
           salary_min: salaryMin,
           salary_max: salaryMax,
           companies: {
@@ -465,75 +521,35 @@ export default async function DashboardPage() {
             company_name: company.name,
             logo_url: company.logo_url,
           },
-        },
-      }
-    })
+        }
+      })
 
-    // おすすめ求人を取得
-    const { data: recommendedJobs = [], error: recommendedJobsError } = await supabase
-      .from("job_postings")
-      .select(`
-        id,
-        title,
-        location,
-        salary_range,
-        company_id,
-        companies:company_id (
-          id,
-          name,
-          logo_url
-        )
-      `)
-      .eq("is_active", true)
-      .limit(5)
-
-    if (recommendedJobsError) {
-      console.error("Error fetching recommended jobs:", recommendedJobsError)
-      throw new Error("おすすめ求人の取得に失敗しました")
+      console.log("Rendering student dashboard")
+      return (
+        <DashboardClient
+          user={user}
+          userRole={userRoleData.role}
+          profile={studentProfile || null}
+          applications={transformedApplications}
+          savedJobs={transformedSavedJobs}
+          recommendedJobs={transformedRecommendedJobs}
+        />
+      )
+    } catch (roleError) {
+      console.error("Error in role processing:", roleError)
+      
+      // ロール取得エラーの場合でも、基本的なダッシュボードを表示
+      return (
+        <DashboardClient
+          user={user}
+          userRole="student"
+          profile={null}
+          applications={[]}
+          savedJobs={[]}
+          recommendedJobs={[]}
+        />
+      )
     }
-
-    console.log(`Fetched ${recommendedJobs?.length || 0} recommended jobs`)
-
-    // おすすめ求人データを変換
-    const transformedRecommendedJobs = (recommendedJobs || []).map((job) => {
-      // companiesが存在するか確認
-      const company = job.companies || { id: null, name: null, logo_url: null }
-
-      // salary_rangeが存在するか確認してから分割
-      let salaryMin = 0
-      let salaryMax = 0
-
-      if (job.salary_range) {
-        const salaryParts = job.salary_range.split("〜")
-        salaryMin = salaryParts[0] ? Number.parseInt(salaryParts[0], 10) || 0 : 0
-        salaryMax = salaryParts[1] ? Number.parseInt(salaryParts[1], 10) || 0 : 0
-      }
-
-      return {
-        id: job.id,
-        job_title: job.title,
-        location: job.location,
-        salary_min: salaryMin,
-        salary_max: salaryMax,
-        companies: {
-          id: company.id,
-          company_name: company.name,
-          logo_url: company.logo_url,
-        },
-      }
-    })
-
-    console.log("Rendering student dashboard")
-    return (
-      <DashboardClient
-        user={user}
-        userRole={userRoleData.role}
-        profile={studentProfile || null}
-        applications={transformedApplications}
-        savedJobs={transformedSavedJobs}
-        recommendedJobs={transformedRecommendedJobs}
-      />
-    )
   } catch (error) {
     console.error("Dashboard error:", error)
     // エラーページを表示
@@ -554,3 +570,4 @@ export default async function DashboardPage() {
     )
   }
 }
+
