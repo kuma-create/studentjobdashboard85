@@ -1,15 +1,21 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { Briefcase, Calendar, ChevronRight, Clock, MapPin, User } from "lucide-react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import type { User } from "@supabase/auth-helpers-nextjs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { formatDate, formatCurrency } from "@/lib/utils"
-import type { DashboardClientProps } from "./types"
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { BriefcaseIcon, BookmarkIcon, StarIcon } from "lucide-react"
+
+interface DashboardClientProps {
+  user: User
+  userRole: string
+  profile: any
+  applications: any[]
+  savedJobs: any[]
+  recommendedJobs: any[]
+}
 
 export default function DashboardClient({
   user,
@@ -21,362 +27,243 @@ export default function DashboardClient({
 }: DashboardClientProps) {
   const [activeTab, setActiveTab] = useState("overview")
 
-  // プロフィール完成度を計算
-  const calculateProfileCompletion = () => {
-    if (!profile) return 0
+  // プロフィール情報
+  const firstName = profile?.first_name || "名前未設定"
+  const lastName = profile?.last_name || ""
+  const university = profile?.university || "大学未設定"
+  const graduationYear = profile?.graduation_year || "未設定"
+  const avatarUrl = profile?.avatar_url || null
 
-    const fields = [
-      profile.first_name,
-      profile.last_name,
-      profile.university,
-      profile.major,
-      profile.graduation_year,
-      profile.skills,
-      profile.bio,
-      profile.avatar_url,
-      profile.resume_url,
-    ]
-
-    const filledFields = fields.filter((field) => field !== null && field !== undefined && field !== "").length
-    return Math.round((filledFields / fields.length) * 100)
+  // イニシャルを取得
+  const getInitials = () => {
+    if (firstName && lastName) {
+      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+    }
+    return firstName.charAt(0).toUpperCase()
   }
 
-  const profileCompletion = calculateProfileCompletion()
-
   return (
-    <div className="container py-8">
-      <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">ダッシュボード</h1>
-          <p className="text-muted-foreground">
-            こんにちは、
-            {profile?.first_name
-              ? `${profile.first_name} ${profile.last_name || ""}さん`
-              : user?.email?.split("@")[0] || "ゲスト"}
-            。今日も就活を頑張りましょう！
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/jobs">
-            <Button className="bg-red-600 hover:bg-red-700">求人を探す</Button>
-          </Link>
-          <Link href="/profile">
-            <Button variant="outline">プロフィール編集</Button>
-          </Link>
+    <div className="container py-6 md:py-10">
+      <h1 className="text-2xl font-bold mb-6">ダッシュボード</h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* プロフィールカード */}
+        <Card className="md:col-span-1">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-lg font-medium">プロフィール</CardTitle>
+            <Button variant="outline" size="sm" asChild>
+              <a href="/profile">編集</a>
+            </Button>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="flex flex-col items-center space-y-4">
+              <Avatar className="h-20 w-20">
+                <AvatarImage src={avatarUrl || undefined} alt={`${firstName} ${lastName}`} />
+                <AvatarFallback>{getInitials()}</AvatarFallback>
+              </Avatar>
+              <div className="text-center">
+                <h3 className="text-lg font-medium">{`${firstName} ${lastName}`}</h3>
+                <p className="text-sm text-muted-foreground">{university}</p>
+                <p className="text-sm text-muted-foreground">{`卒業予定: ${graduationYear}年`}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* メインコンテンツ */}
+        <div className="md:col-span-2">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="overview" className="flex items-center gap-2">
+                <StarIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">おすすめ</span>
+              </TabsTrigger>
+              <TabsTrigger value="applications" className="flex items-center gap-2">
+                <BriefcaseIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">応募履歴</span>
+              </TabsTrigger>
+              <TabsTrigger value="saved" className="flex items-center gap-2">
+                <BookmarkIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">保存済み</span>
+              </TabsTrigger>
+            </TabsList>
+
+            {/* おすすめ求人タブ */}
+            <TabsContent value="overview">
+              <Card>
+                <CardHeader>
+                  <CardTitle>おすすめ求人</CardTitle>
+                  <CardDescription>あなたにおすすめの求人情報です</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {recommendedJobs.length > 0 ? (
+                    <div className="space-y-4">
+                      {recommendedJobs.map((job) => (
+                        <div key={job.id} className="flex items-start space-x-4 border-b pb-4">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={job.companies?.logo_url || undefined} alt={job.companies?.company_name} />
+                            <AvatarFallback>{job.companies?.company_name?.charAt(0) || "C"}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 space-y-1">
+                            <h4 className="font-medium">{job.job_title}</h4>
+                            <p className="text-sm text-muted-foreground">{job.companies?.company_name}</p>
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              {job.location && (
+                                <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1">
+                                  {job.location}
+                                </span>
+                              )}
+                              {job.salary_min > 0 && job.salary_max > 0 && (
+                                <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1">
+                                  {`${job.salary_min}万円〜${job.salary_max}万円`}
+                                </span>
+                              )}
+                            </div>
+                            <div className="pt-2">
+                              <Button size="sm" asChild>
+                                <a href={`/jobs/${job.id}`}>詳細を見る</a>
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">おすすめの求人はまだありません</p>
+                      <Button className="mt-4" asChild>
+                        <a href="/jobs">求人を探す</a>
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* 応募履歴タブ */}
+            <TabsContent value="applications">
+              <Card>
+                <CardHeader>
+                  <CardTitle>応募履歴</CardTitle>
+                  <CardDescription>あなたの応募状況を確認できます</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {applications.length > 0 ? (
+                    <div className="space-y-4">
+                      {applications.map((app) => (
+                        <div key={app.id} className="flex items-start space-x-4 border-b pb-4">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage
+                              src={app.jobs?.companies?.logo_url || undefined}
+                              alt={app.jobs?.companies?.company_name}
+                            />
+                            <AvatarFallback>{app.jobs?.companies?.company_name?.charAt(0) || "C"}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 space-y-1">
+                            <h4 className="font-medium">{app.jobs?.job_title}</h4>
+                            <p className="text-sm text-muted-foreground">{app.jobs?.companies?.company_name}</p>
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              <span
+                                className={`inline-flex items-center rounded-md px-2 py-1 ${
+                                  app.status === "pending"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : app.status === "accepted"
+                                      ? "bg-green-100 text-green-800"
+                                      : app.status === "rejected"
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {app.status === "pending"
+                                  ? "審査中"
+                                  : app.status === "accepted"
+                                    ? "合格"
+                                    : app.status === "rejected"
+                                      ? "不合格"
+                                      : app.status}
+                              </span>
+                              <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1">
+                                {new Date(app.created_at).toLocaleDateString("ja-JP")}
+                              </span>
+                            </div>
+                            <div className="pt-2">
+                              <Button size="sm" asChild>
+                                <a href={`/applications/${app.id}`}>詳細を見る</a>
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">応募履歴はまだありません</p>
+                      <Button className="mt-4" asChild>
+                        <a href="/jobs">求人を探す</a>
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* 保存済み求人タブ */}
+            <TabsContent value="saved">
+              <Card>
+                <CardHeader>
+                  <CardTitle>保存済み求人</CardTitle>
+                  <CardDescription>後で確認するために保存した求人です</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {savedJobs.length > 0 ? (
+                    <div className="space-y-4">
+                      {savedJobs.map((job) => (
+                        <div key={job.id} className="flex items-start space-x-4 border-b pb-4">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage
+                              src={job.jobs?.companies?.logo_url || undefined}
+                              alt={job.jobs?.companies?.company_name}
+                            />
+                            <AvatarFallback>{job.jobs?.companies?.company_name?.charAt(0) || "C"}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 space-y-1">
+                            <h4 className="font-medium">{job.jobs?.job_title}</h4>
+                            <p className="text-sm text-muted-foreground">{job.jobs?.companies?.company_name}</p>
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              {job.jobs?.location && (
+                                <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1">
+                                  {job.jobs.location}
+                                </span>
+                              )}
+                              {job.jobs?.salary_min > 0 && job.jobs?.salary_max > 0 && (
+                                <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1">
+                                  {`${job.jobs.salary_min}万円〜${job.jobs.salary_max}万円`}
+                                </span>
+                              )}
+                            </div>
+                            <div className="pt-2">
+                              <Button size="sm" asChild>
+                                <a href={`/jobs/${job.jobs?.id}`}>詳細を見る</a>
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">保存済みの求人はまだありません</p>
+                      <Button className="mt-4" asChild>
+                        <a href="/jobs">求人を探す</a>
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
-
-      <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">概要</TabsTrigger>
-          <TabsTrigger value="applications">応募履歴</TabsTrigger>
-          <TabsTrigger value="saved">保存した求人</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">プロフィール完成度</CardTitle>
-                <User className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{profileCompletion}%</div>
-                <div className="mt-2 h-2 w-full rounded-full bg-gray-200">
-                  <div className="h-2 rounded-full bg-red-600" style={{ width: `${profileCompletion}%` }}></div>
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  プロフィールを完成させて、企業からのスカウトを受け取りましょう
-                </p>
-              </CardContent>
-              <CardFooter>
-                <Link href="/profile" className="w-full">
-                  <Button variant="outline" className="w-full">
-                    プロフィールを編集
-                  </Button>
-                </Link>
-              </CardFooter>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">応募状況</CardTitle>
-                <Briefcase className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{applications.length}</div>
-                <p className="text-xs text-muted-foreground">応募中の求人</p>
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <div className="rounded-lg bg-muted p-2 text-center">
-                    <div className="text-lg font-medium">
-                      {applications.filter((app) => app.status === "pending").length}
-                    </div>
-                    <p className="text-xs text-muted-foreground">選考中</p>
-                  </div>
-                  <div className="rounded-lg bg-muted p-2 text-center">
-                    <div className="text-lg font-medium">
-                      {applications.filter((app) => app.status === "interview").length}
-                    </div>
-                    <p className="text-xs text-muted-foreground">面接確定</p>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Link href="/applications" className="w-full">
-                  <Button variant="outline" className="w-full">
-                    応募履歴を見る
-                  </Button>
-                </Link>
-              </CardFooter>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">保存した求人</CardTitle>
-                <Briefcase className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{savedJobs.length}</div>
-                <p className="text-xs text-muted-foreground">後で確認する求人</p>
-              </CardContent>
-              <CardFooter>
-                <Button variant="outline" className="w-full" onClick={() => setActiveTab("saved")}>
-                  保存した求人を見る
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
-
-          <h2 className="mt-8 text-xl font-semibold">おすすめ求人</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {recommendedJobs.length > 0 ? (
-              recommendedJobs.slice(0, 3).map((job) => (
-                <Link href={`/jobs/${job.id}`} key={job.id}>
-                  <Card className="h-full cursor-pointer transition-shadow hover:shadow-md">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="relative h-10 w-10 overflow-hidden rounded-md">
-                          {job.companies?.logo_url ? (
-                            <Image
-                              src={job.companies.logo_url || "/placeholder.svg"}
-                              alt={job.companies.company_name || "企業ロゴ"}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-gray-200 text-lg font-bold">
-                              {job.companies?.company_name?.charAt(0) || "?"}
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <CardTitle className="text-base">{job.job_title}</CardTitle>
-                          <CardDescription className="text-xs">{job.companies?.company_name}</CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pb-2">
-                      <div className="flex flex-wrap gap-1">
-                        {job.location && (
-                          <Badge variant="outline" className="flex items-center gap-1 text-xs">
-                            <MapPin className="h-3 w-3" />
-                            {job.location}
-                          </Badge>
-                        )}
-                        {(job.salary_min || job.salary_max) && (
-                          <Badge variant="outline" className="text-xs">
-                            {job.salary_min ? formatCurrency(Number(job.salary_min)) : ""}
-                            {job.salary_min && job.salary_max ? "〜" : ""}
-                            {job.salary_max ? formatCurrency(Number(job.salary_max)) : ""}
-                          </Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                    <CardFooter className="pt-0">
-                      <div className="flex w-full items-center justify-between">
-                        <span className="text-xs text-muted-foreground">詳細を見る</span>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    </CardFooter>
-                  </Card>
-                </Link>
-              ))
-            ) : (
-              <div className="col-span-full rounded-lg border border-dashed p-8 text-center">
-                <h3 className="mb-2 text-lg font-medium">おすすめ求人がありません</h3>
-                <p className="mb-4 text-sm text-muted-foreground">
-                  プロフィールを完成させると、あなたに合った求人をおすすめします
-                </p>
-                <Link href="/jobs">
-                  <Button className="bg-red-600 hover:bg-red-700">求人を探す</Button>
-                </Link>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="applications" className="space-y-4">
-          <h2 className="text-xl font-semibold">応募履歴</h2>
-          {applications.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              {applications.map((application) => (
-                <Link href={`/applications/${application.id}`} key={application.id}>
-                  <Card className="cursor-pointer transition-shadow hover:shadow-md">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="relative h-10 w-10 overflow-hidden rounded-md">
-                          {application.jobs?.companies?.logo_url ? (
-                            <Image
-                              src={application.jobs.companies.logo_url || "/placeholder.svg"}
-                              alt={application.jobs.companies.company_name || "企業ロゴ"}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-gray-200 text-lg font-bold">
-                              {application.jobs?.companies?.company_name?.charAt(0) || "?"}
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <CardTitle className="text-base">{application.jobs?.job_title}</CardTitle>
-                          <CardDescription className="text-xs">
-                            {application.jobs?.companies?.company_name}
-                          </CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pb-2">
-                      <div className="flex flex-wrap gap-2">
-                        <Badge
-                          className={`${
-                            application.status === "accepted"
-                              ? "bg-green-100 text-green-800"
-                              : application.status === "rejected"
-                                ? "bg-red-100 text-red-800"
-                                : application.status === "interview"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {application.status === "pending"
-                            ? "選考中"
-                            : application.status === "interview"
-                              ? "面接確定"
-                              : application.status === "accepted"
-                                ? "内定"
-                                : application.status === "rejected"
-                                  ? "不採用"
-                                  : application.status}
-                        </Badge>
-                        <Badge variant="outline" className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {formatDate(application.created_at)}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="pt-0">
-                      <div className="flex w-full items-center justify-between">
-                        <span className="text-xs text-muted-foreground">詳細を見る</span>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    </CardFooter>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed p-8 text-center">
-              <h3 className="mb-2 text-lg font-medium">応募履歴がありません</h3>
-              <p className="mb-4 text-sm text-muted-foreground">
-                興味のある求人に応募して、キャリアの第一歩を踏み出しましょう
-              </p>
-              <Link href="/jobs">
-                <Button className="bg-red-600 hover:bg-red-700">求人を探す</Button>
-              </Link>
-            </div>
-          )}
-          {applications.length > 0 && (
-            <div className="mt-4 flex justify-center">
-              <Link href="/applications">
-                <Button variant="outline">すべての応募履歴を見る</Button>
-              </Link>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="saved" className="space-y-4">
-          <h2 className="text-xl font-semibold">保存した求人</h2>
-          {savedJobs.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {savedJobs.map((saved) => (
-                <Link href={`/jobs/${saved.job_id}`} key={saved.id}>
-                  <Card className="cursor-pointer transition-shadow hover:shadow-md">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="relative h-10 w-10 overflow-hidden rounded-md">
-                          {saved.jobs?.companies?.logo_url ? (
-                            <Image
-                              src={saved.jobs.companies.logo_url || "/placeholder.svg"}
-                              alt={saved.jobs.companies.company_name || "企業ロゴ"}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-gray-200 text-lg font-bold">
-                              {saved.jobs?.companies?.company_name?.charAt(0) || "?"}
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <CardTitle className="text-base">{saved.jobs?.job_title}</CardTitle>
-                          <CardDescription className="text-xs">{saved.jobs?.companies?.company_name}</CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pb-2">
-                      <div className="flex flex-wrap gap-1">
-                        {saved.jobs?.location && (
-                          <Badge variant="outline" className="flex items-center gap-1 text-xs">
-                            <MapPin className="h-3 w-3" />
-                            {saved.jobs.location}
-                          </Badge>
-                        )}
-                        {(saved.jobs?.salary_min || saved.jobs?.salary_max) && (
-                          <Badge variant="outline" className="text-xs">
-                            {saved.jobs.salary_min ? formatCurrency(Number(saved.jobs.salary_min)) : ""}
-                            {saved.jobs.salary_min && saved.jobs.salary_max ? "〜" : ""}
-                            {saved.jobs.salary_max ? formatCurrency(Number(saved.jobs.salary_max)) : ""}
-                          </Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                    <CardFooter className="pt-0">
-                      <div className="flex w-full items-center justify-between">
-                        <span className="text-xs text-muted-foreground">
-                          <Clock className="mr-1 inline-block h-3 w-3" />
-                          {formatDate(saved.created_at)}に保存
-                        </span>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    </CardFooter>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed p-8 text-center">
-              <h3 className="mb-2 text-lg font-medium">保存した求人がありません</h3>
-              <p className="mb-4 text-sm text-muted-foreground">
-                興味のある求人を保存して、後で確認できるようにしましょう
-              </p>
-              <Link href="/jobs">
-                <Button className="bg-red-600 hover:bg-red-700">求人を探す</Button>
-              </Link>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
     </div>
   )
 }

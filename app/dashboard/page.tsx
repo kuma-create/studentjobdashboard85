@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import DashboardClient from "./dashboard-client"
 import CompanyDashboardClient from "./company-dashboard-client"
@@ -93,11 +92,22 @@ export default async function DashboardPage() {
       data: { session },
     } = await supabase.auth.getSession()
 
-    // セッションがない場合はログインページにリダイレクト
+    // セッションがない場合はエラーページを表示（リダイレクトではなく）
     if (!session) {
       // リダイレクト前にログを出力
-      console.log("No session found, redirecting to signin page")
-      return redirect("/auth/signin?redirect=/dashboard")
+      console.log("No session found, showing error page")
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen p-4">
+          <h1 className="text-2xl font-bold mb-4">認証エラー</h1>
+          <p className="mb-6">ログインセッションが見つかりません。再度ログインしてください。</p>
+          <a
+            href="/auth/signin?redirect=/dashboard"
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+          >
+            ログインページに戻る
+          </a>
+        </div>
+      )
     }
 
     const user = session.user
@@ -156,10 +166,18 @@ export default async function DashboardPage() {
       // 企業アカウントの場合
       if (userRoleData.role === "company") {
         console.log("Processing company dashboard")
-        // 承認されていない場合は保留ページにリダイレクト
+        // 承認されていない場合はエラーページを表示（リダイレクトではなく）
         if (userRoleData.is_approved === false) {
-          console.log("Company not approved, redirecting to pending page")
-          return redirect("/company/pending")
+          console.log("Company not approved, showing pending message")
+          return (
+            <div className="flex flex-col items-center justify-center min-h-screen p-4">
+              <h1 className="text-2xl font-bold mb-4">承認待ち</h1>
+              <p className="mb-6">企業アカウントの承認待ちです。承認されるまでお待ちください。</p>
+              <a href="/" className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors">
+                トップページに戻る
+              </a>
+            </div>
+          )
         }
 
         // 求人情報を取得

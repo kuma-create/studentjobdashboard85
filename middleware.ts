@@ -64,8 +64,11 @@ export async function middleware(request: NextRequest) {
   // セッションがない場合はログインページにリダイレクト
   if (!session) {
     console.log("セッションなし、ログインページへリダイレクト")
+    // リダイレクトURLを作成
     const redirectUrl = new URL("/auth/signin", request.url)
     redirectUrl.searchParams.set("redirect", path)
+
+    // リダイレクトレスポンスを返す
     return NextResponse.redirect(redirectUrl)
   }
 
