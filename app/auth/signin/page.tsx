@@ -41,14 +41,8 @@ export default function SignInPage() {
         throw error
       }
 
-      // セッションが正しく設定されたことを確認
-      await supabase.auth.getSession()
-
-      // 少し遅延を入れてセッションの設定を確実にする
-      setTimeout(() => {
-        // リダイレクト
-        window.location.href = redirectPath
-      }, 500)
+      // Force a hard navigation to the dashboard
+      window.location.href = redirectPath
     } catch (error: any) {
       setError(error.message || "ログインに失敗しました。メールアドレスとパスワードを確認してください。")
     } finally {

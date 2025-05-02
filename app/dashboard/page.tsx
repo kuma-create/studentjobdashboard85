@@ -300,7 +300,12 @@ export default async function DashboardPage() {
 
         console.log("Rendering company dashboard")
         return (
-          <CompanyDashboardClient user={user} company={companyInfo} jobs={jobs} applications={transformedApplications} />
+          <CompanyDashboardClient
+            user={user}
+            company={companyInfo}
+            jobs={jobs}
+            applications={transformedApplications}
+          />
         )
       }
 
@@ -537,7 +542,7 @@ export default async function DashboardPage() {
       )
     } catch (roleError) {
       console.error("Error in role processing:", roleError)
-      
+
       // ロール取得エラーの場合でも、基本的なダッシュボードを表示
       return (
         <DashboardClient
@@ -570,4 +575,3 @@ export default async function DashboardPage() {
     )
   }
 }
-
