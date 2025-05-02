@@ -2,10 +2,10 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import type { Database } from "../database.types"
 
-export function createClient() {
+export async function createClient() {
   const cookieStore = cookies()
 
-  return createServerClient<Database, "public">(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -14,18 +14,24 @@ export function createClient() {
           return cookieStore.get(name)?.value
         },
         set(name: string, value: string, options: any) {
-          // Server Components では cookie を設定できないため、何もしない
-          console.warn(
-            "Warning: Attempting to set cookie in a Server Component. This is not supported and will not work.",
-          )
+          try {
+            cookieStore.set({ name, value, ...options })
+          } catch (error) {
+            // クッキーの設定に失敗した場合のエラーハンドリング
+            console.error("Failed to set cookie:", error)
+          }
         },
         remove(name: string, options: any) {
-          // Server Components では cookie を削除できないため、何もしない
-          console.warn(
-            "Warning: Attempting to remove cookie in a Server Component. This is not supported and will not work.",
-          )
+          try {
+            cookieStore.set({ name, value: "", ...options, maxAge: 0 })
+          } catch (error) {
+            console.error("Failed to remove cookie:", error)
+          }
         },
       },
     },
   )
 }
+
+// 後方互換性のために残す
+export const createServerSupabaseClient = createClient

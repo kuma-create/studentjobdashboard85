@@ -8,7 +8,8 @@ export const revalidate = 0
 
 export default async function ProfilePage() {
   try {
-    const supabase = await createClient()
+    // awaitを削除（createClientは非同期関数ではない）
+    const supabase = createClient()
 
     // セッションの取得
     const {

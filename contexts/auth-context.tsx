@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/auth-helpers-nextjs"
 import { useRouter } from "next/navigation"
@@ -33,10 +33,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
+  // 初期化フラグを追加して無限ループを防止
+  const isInitialized = useRef(false)
+  const authChangeProcessing = useRef(false)
+
   const supabase = createClient()
 
   const refreshUser = async () => {
+    // すでに処理中なら実行しない（無限ループ防止）
+    if (authChangeProcessing.current) return
+
     try {
+      authChangeProcessing.current = true
       setIsLoading(true)
       console.log("Refreshing user data")
 
@@ -52,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null)
         setUserRole(null)
         setProfile(null)
+        authChangeProcessing.current = false
         return
       }
 
@@ -67,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (roleError) {
         console.error("ロール取得エラー:", roleError)
+        authChangeProcessing.current = false
         return
       }
 
@@ -136,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("ユーザー情報取得エラー:", error)
     } finally {
       setIsLoading(false)
+      authChangeProcessing.current = false
     }
   }
 
@@ -155,19 +166,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    refreshUser()
+    // 初期化済みなら実行しない（無限ループ防止）
+    if (isInitialized.current) return
+
+    const initializeAuth = async () => {
+      await refreshUser()
+      isInitialized.current = true
+    }
+
+    initializeAuth()
 
     // 認証状態の変更を監視
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event)
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        refreshUser()
-        // セッションが更新されたらページをリフレッシュ
-        router.refresh()
-      } else if (event === "SIGNED_OUT") {
+
+      // ここが重要: SIGNED_OUTイベントは、実際にセッションがない場合のみ処理
+      if (event === "SIGNED_OUT") {
+        // セッションが実際に存在するか確認
+        const { data } = await supabase.auth.getSession()
+        if (data.session) {
+          console.log("SIGNED_OUT event received but session exists, ignoring")
+          return // セッションが存在する場合は無視
+        }
+
         setUser(null)
         setUserRole(null)
         setProfile(null)
+      }
+      // SIGNED_INとTOKEN_REFRESHEDの場合は通常通り処理
+      else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        refreshUser()
+        // セッションが更新されたらページをリフレッシュ
+        router.refresh()
       }
     })
 

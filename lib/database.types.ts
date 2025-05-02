@@ -452,10 +452,7 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      create_applications_table: {
-        Args: Record<string, never>
-        Returns: undefined
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never

@@ -1,4 +1,3 @@
-import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import DashboardClient from "./dashboard-client"
 import CompanyDashboardClient from "./company-dashboard-client"
@@ -85,9 +84,7 @@ interface RecommendedJob {
 
 export default async function DashboardPage() {
   try {
-    // サーバーサイドのSupabaseクライアントを作成
-    // クッキーを明示的に渡す
-    const cookieStore = cookies()
+    // awaitを削除（createClientは非同期関数ではない）
     const supabase = createClient()
 
     // ユーザー認証チェック
