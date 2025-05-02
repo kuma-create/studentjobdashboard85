@@ -39,8 +39,11 @@ function isAuthRequired(path: string): boolean {
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
+  console.log("ミドルウェアチェック:", path)
+
   // 認証が必要ないページはそのまま通す
   if (!isAuthRequired(path)) {
+    console.log("認証不要のパス:", path)
     return NextResponse.next()
   }
 
@@ -49,14 +52,18 @@ export function middleware(request: NextRequest) {
   const hasRefreshToken = request.cookies.has("sb-refresh-token") || request.cookies.has("sb-refresh-token-secure")
   const hasSession = hasAccessToken || hasRefreshToken
 
+  console.log("認証チェック - アクセストークン:", hasAccessToken, "リフレッシュトークン:", hasRefreshToken)
+
   // セッションがない場合はログインページにリダイレクト
   if (!hasSession) {
+    console.log("セッションなし、ログインページへリダイレクト")
     const redirectUrl = new URL("/auth/signin", request.url)
     redirectUrl.searchParams.set("redirect", path)
     return NextResponse.redirect(redirectUrl)
   }
 
   // セッションがある場合はそのまま通す
+  console.log("セッションあり、次へ進む:", path)
   return NextResponse.next()
 }
 

@@ -153,7 +153,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshUser()
 
     // 認証状態の変更を監視
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event)
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         refreshUser()
       } else if (event === "SIGNED_OUT") {
