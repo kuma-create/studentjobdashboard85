@@ -36,19 +36,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     try {
       setIsLoading(true)
+      console.log("Refreshing user data")
 
       // セッション情報を取得
       const {
         data: { session },
       } = await supabase.auth.getSession()
 
+      console.log("Session check:", session ? "Session exists" : "No session")
+
       if (!session?.user) {
+        console.log("No user in session, clearing user data")
         setUser(null)
         setUserRole(null)
         setProfile(null)
         return
       }
 
+      console.log("User found in session:", session.user.id)
       setUser(session.user)
 
       // ユーザーロールを取得
@@ -63,10 +68,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
+      console.log("User role:", roleData?.role || "No role")
       setUserRole(roleData?.role || null)
 
       // ユーザープロフィールを取得
       if (roleData?.role === "student") {
+        console.log("Fetching student profile")
         const { data: studentProfile, error: profileError } = await supabase
           .from("student_profiles")
           .select("*")
@@ -74,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .single()
 
         if (!profileError && studentProfile) {
+          console.log("Student profile found")
           setProfile({
             id: session.user.id,
             first_name: studentProfile.first_name,
@@ -82,8 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             avatar_url: studentProfile.avatar_url,
             email: session.user.email || "",
           })
+        } else {
+          console.log("No student profile found or error:", profileError)
         }
       } else if (roleData?.role === "company") {
+        console.log("Fetching company profile")
         // 企業ユーザーの場合
         const { data: companyUser, error: companyUserError } = await supabase
           .from("company_users")
@@ -92,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .single()
 
         if (!companyUserError && companyUser) {
+          console.log("Company user found with company_id:", companyUser.company_id)
           const { data: company, error: companyError } = await supabase
             .from("companies")
             .select("name")
@@ -99,13 +111,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .single()
 
           if (!companyError && company) {
+            console.log("Company found:", company.name)
             setProfile({
               id: session.user.id,
               company_name: company.name || session.user.user_metadata?.company_name,
               email: session.user.email || "",
             })
+          } else {
+            console.log("No company found or error:", companyError)
           }
         } else {
+          console.log("No company user found, using metadata")
           // company_usersテーブルにデータがない場合はuser_metadataから取得
           setProfile({
             id: session.user.id,

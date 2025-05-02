@@ -8,12 +8,19 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")
 
+  console.log("Auth callback received with code:", code ? "present" : "missing")
+
   if (!code) {
+    console.log("No code provided in callback")
     return NextResponse.redirect(`${requestUrl.origin}/auth/signin?error=no_code`)
   }
 
+  // リダイレクト先を取得（デフォルトはダッシュボード）
+  const redirectPath = requestUrl.searchParams.get("redirect") || "/dashboard"
+  console.log("Redirect path from callback:", redirectPath)
+
   // レスポンスオブジェクトを作成
-  const response = NextResponse.redirect(`${requestUrl.origin}/dashboard`)
+  const response = NextResponse.redirect(`${requestUrl.origin}${redirectPath}`)
 
   // クッキーストアを取得
   const cookieStore = cookies()
@@ -41,13 +48,19 @@ export async function GET(request: NextRequest) {
 
   try {
     // コードをセッションに交換
+    console.log("Exchanging code for session")
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (error) {
       console.error("Error exchanging code for session:", error)
       return NextResponse.redirect(`${requestUrl.origin}/auth/signin?error=session_error`)
     }
 
+    // セッションが正しく設定されたことを確認
+    const { data: sessionData } = await supabase.auth.getSession()
+    console.log("Session confirmed:", sessionData.session ? "valid" : "invalid")
+
     // 成功した場合はダッシュボードにリダイレクト
+    console.log("Redirecting to:", redirectPath)
     return response
   } catch (error) {
     console.error("Unexpected error during auth:", error)

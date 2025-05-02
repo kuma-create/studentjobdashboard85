@@ -49,10 +49,13 @@ export default function SignInPage() {
       const { data: sessionData } = await supabase.auth.getSession()
       console.log("セッション確認:", sessionData)
 
+      // 少し遅延を入れてセッションの設定を確実にする
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
       // リダイレクト
       console.log("リダイレクト先:", redirectPath)
-      router.push(redirectPath)
-      router.refresh()
+      window.location.href = redirectPath
+      // Remove router.refresh() as it's not needed with window.location
     } catch (error: any) {
       console.error("ログイン処理エラー:", error)
       setError(error.message || "ログインに失敗しました。メールアドレスとパスワードを確認してください。")
@@ -137,3 +140,4 @@ export default function SignInPage() {
     </div>
   )
 }
+s
