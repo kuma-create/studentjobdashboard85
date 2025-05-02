@@ -31,12 +31,25 @@ export default function SignInForm() {
     setError(null)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log("ログイン試行:", email)
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("ログインエラー:", error)
+        throw error
+      }
+
+      console.log("ログイン成功:", data)
+
+      // セッションが正しく設定されたことを確認
+      const { data: sessionData } = await supabase.auth.getSession()
+      console.log("セッション確認:", sessionData)
+
+      // リダイレクト
+      console.log("リダイレクト先:", redirectUrl)
       router.push(redirectUrl)
       router.refresh()
     } catch (err: any) {
