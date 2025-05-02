@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/auth-helpers-nextjs"
+import { useRouter } from "next/navigation"
 
 type UserProfile = {
   id: string
@@ -30,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
 
   const supabase = createClient()
 
@@ -143,7 +145,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null)
       setUserRole(null)
       setProfile(null)
-      window.location.href = "/"
+
+      // 直接リダイレクトする代わりにrouterを使用
+      router.push("/")
+      router.refresh()
     } catch (error) {
       console.error("ログアウトエラー:", error)
     }
@@ -157,6 +162,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Auth state changed:", event)
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         refreshUser()
+        // セッションが更新されたらページをリフレッシュ
+        router.refresh()
       } else if (event === "SIGNED_OUT") {
         setUser(null)
         setUserRole(null)

@@ -1,3 +1,4 @@
+import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import DashboardClient from "./dashboard-client"
 import CompanyDashboardClient from "./company-dashboard-client"
@@ -85,6 +86,8 @@ interface RecommendedJob {
 export default async function DashboardPage() {
   try {
     // サーバーサイドのSupabaseクライアントを作成
+    // クッキーを明示的に渡す
+    const cookieStore = cookies()
     const supabase = createClient()
 
     // ユーザー認証チェック
@@ -92,9 +95,8 @@ export default async function DashboardPage() {
       data: { session },
     } = await supabase.auth.getSession()
 
-    // セッションがない場合はエラーページを表示（リダイレクトではなく）
+    // セッションがない場合はエラーページを表示
     if (!session) {
-      // リダイレクト前にログを出力
       console.log("No session found, showing error page")
       return (
         <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -166,7 +168,7 @@ export default async function DashboardPage() {
       // 企業アカウントの場合
       if (userRoleData.role === "company") {
         console.log("Processing company dashboard")
-        // 承認されていない場合はエラーページを表示（リダイレクトではなく）
+        // 承認されていない場合はエラーページを表示
         if (userRoleData.is_approved === false) {
           console.log("Company not approved, showing pending message")
           return (

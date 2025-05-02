@@ -42,8 +42,9 @@ export default function SignInPage() {
           console.log("既存のセッションを検出しました。リダイレクトします。")
           setIsRedirecting(true)
 
-          // 直接URLを変更してリダイレクト
-          window.location.href = redirectPath
+          // Next.jsのルーターを使用してリダイレクト
+          router.push(redirectPath)
+          router.refresh()
         }
       } catch (error) {
         console.error("セッションチェックエラー:", error)
@@ -51,7 +52,7 @@ export default function SignInPage() {
     }
 
     checkSession()
-  }, [redirectPath, supabase.auth])
+  }, [redirectPath, supabase.auth, router])
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -73,9 +74,13 @@ export default function SignInPage() {
       console.log("ログイン成功:", data)
       setIsRedirecting(true)
 
-      // 直接URLを変更してリダイレクト
+      // セッションクッキーが設定されるのを待つ
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
+      // Next.jsのルーターを使用してリダイレクト
       console.log(`リダイレクト先: ${redirectPath}`)
-      window.location.href = redirectPath
+      router.push(redirectPath)
+      router.refresh()
     } catch (error: any) {
       console.error("ログイン処理エラー:", error)
       setError(error.message || "ログインに失敗しました。メールアドレスとパスワードを確認してください。")
