@@ -1,43 +1,59 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       applications: {
         Row: {
-          id: string
-          student_id: string
-          job_id: string
-          status: string
-          created_at: string
-          updated_at: string | null
-          resume_url: string | null
+          company_id: string | null
           cover_letter: string | null
+          created_at: string | null
+          id: string
           interview_date: string | null
+          job_id: string
+          resume_url: string | null
+          status: string | null
+          student_id: string
+          updated_at: string | null
         }
         Insert: {
-          id?: string
-          student_id: string
-          job_id: string
-          status?: string
-          created_at?: string
-          updated_at?: string | null
-          resume_url?: string | null
+          company_id?: string | null
           cover_letter?: string | null
+          created_at?: string | null
+          id?: string
           interview_date?: string | null
+          job_id: string
+          resume_url?: string | null
+          status?: string | null
+          student_id: string
+          updated_at?: string | null
         }
         Update: {
-          id?: string
-          student_id?: string
-          job_id?: string
-          status?: string
-          created_at?: string
-          updated_at?: string | null
-          resume_url?: string | null
+          company_id?: string | null
           cover_letter?: string | null
+          created_at?: string | null
+          id?: string
           interview_date?: string | null
+          job_id?: string
+          resume_url?: string | null
+          status?: string | null
+          student_id?: string
+          updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "applications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "applications_job_id_fkey"
             columns: ["job_id"]
@@ -56,67 +72,67 @@ export interface Database {
       }
       companies: {
         Row: {
+          created_at: string | null
+          description: string | null
           id: string
-          name: string
           industry: string | null
           location: string | null
-          size: string | null
-          description: string | null
-          website_url: string | null
           logo_url: string | null
-          created_at: string
+          name: string
+          size: string | null
           updated_at: string | null
+          website_url: string | null
         }
         Insert: {
+          created_at?: string | null
+          description?: string | null
           id?: string
-          name: string
           industry?: string | null
           location?: string | null
-          size?: string | null
-          description?: string | null
-          website_url?: string | null
           logo_url?: string | null
-          created_at?: string
+          name: string
+          size?: string | null
           updated_at?: string | null
+          website_url?: string | null
         }
         Update: {
+          created_at?: string | null
+          description?: string | null
           id?: string
-          name?: string
           industry?: string | null
           location?: string | null
-          size?: string | null
-          description?: string | null
-          website_url?: string | null
           logo_url?: string | null
-          created_at?: string
+          name?: string
+          size?: string | null
           updated_at?: string | null
+          website_url?: string | null
         }
         Relationships: []
       }
       company_users: {
         Row: {
-          id: string
-          user_id: string
           company_id: string
-          role: string
-          created_at: string
+          created_at: string | null
+          id: string
+          role: string | null
           updated_at: string | null
+          user_id: string
         }
         Insert: {
-          id?: string
-          user_id: string
           company_id: string
-          role?: string
-          created_at?: string
+          created_at?: string | null
+          id?: string
+          role?: string | null
           updated_at?: string | null
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
           company_id?: string
-          role?: string
-          created_at?: string
+          created_at?: string | null
+          id?: string
+          role?: string | null
           updated_at?: string | null
+          user_id?: string
         }
         Relationships: [
           {
@@ -126,38 +142,31 @@ export interface Database {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "company_users_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
       }
       conversations: {
         Row: {
-          id: string
           company_id: string | null
-          student_id: string | null
+          created_at: string | null
+          id: string
           job_id: string | null
-          created_at: string
+          student_id: string | null
           updated_at: string | null
         }
         Insert: {
-          id?: string
           company_id?: string | null
-          student_id?: string | null
+          created_at?: string | null
+          id?: string
           job_id?: string | null
-          created_at?: string
+          student_id?: string | null
           updated_at?: string | null
         }
         Update: {
-          id?: string
           company_id?: string | null
-          student_id?: string | null
+          created_at?: string | null
+          id?: string
           job_id?: string | null
-          created_at?: string
+          student_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -186,39 +195,39 @@ export interface Database {
       }
       interview_schedules: {
         Row: {
-          id: string
           application_id: string
+          created_at: string | null
+          id: string
           interview_date: string
           interview_time: string
           location: string | null
           meeting_url: string | null
           notes: string | null
-          status: string
-          created_at: string
+          status: string | null
           updated_at: string | null
         }
         Insert: {
-          id?: string
           application_id: string
+          created_at?: string | null
+          id?: string
           interview_date: string
           interview_time: string
           location?: string | null
           meeting_url?: string | null
           notes?: string | null
-          status?: string
-          created_at?: string
+          status?: string | null
           updated_at?: string | null
         }
         Update: {
-          id?: string
           application_id?: string
+          created_at?: string | null
+          id?: string
           interview_date?: string
           interview_time?: string
           location?: string | null
           meeting_url?: string | null
           notes?: string | null
-          status?: string
-          created_at?: string
+          status?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -233,45 +242,48 @@ export interface Database {
       }
       job_postings: {
         Row: {
-          id: string
-          title: string
-          description: string
-          company_id: string
-          location: string | null
-          job_type: string | null
-          salary_range: string | null
-          requirements: string | null
           application_deadline: string | null
-          is_active: boolean
-          created_at: string
+          company_id: string
+          created_at: string | null
+          created_by: string | null
+          description: string
+          id: string
+          is_active: boolean | null
+          job_type: string | null
+          location: string | null
+          requirements: string | null
+          salary_range: string | null
+          title: string
           updated_at: string | null
         }
         Insert: {
-          id?: string
-          title: string
-          description: string
-          company_id: string
-          location?: string | null
-          job_type?: string | null
-          salary_range?: string | null
-          requirements?: string | null
           application_deadline?: string | null
-          is_active?: boolean
-          created_at?: string
+          company_id: string
+          created_at?: string | null
+          created_by?: string | null
+          description: string
+          id?: string
+          is_active?: boolean | null
+          job_type?: string | null
+          location?: string | null
+          requirements?: string | null
+          salary_range?: string | null
+          title: string
           updated_at?: string | null
         }
         Update: {
-          id?: string
-          title?: string
-          description?: string
-          company_id?: string
-          location?: string | null
-          job_type?: string | null
-          salary_range?: string | null
-          requirements?: string | null
           application_deadline?: string | null
-          is_active?: boolean
-          created_at?: string
+          company_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          id?: string
+          is_active?: boolean | null
+          job_type?: string | null
+          location?: string | null
+          requirements?: string | null
+          salary_range?: string | null
+          title?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -286,30 +298,30 @@ export interface Database {
       }
       messages: {
         Row: {
-          id: string
-          conversation_id: string
-          sender_id: string
           content: string
-          is_read: boolean
-          created_at: string
+          conversation_id: string
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          sender_id: string
           updated_at: string | null
         }
         Insert: {
-          id?: string
-          conversation_id: string
-          sender_id: string
           content: string
-          is_read?: boolean
-          created_at?: string
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          sender_id: string
           updated_at?: string | null
         }
         Update: {
-          id?: string
-          conversation_id?: string
-          sender_id?: string
           content?: string
-          is_read?: boolean
-          created_at?: string
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          sender_id?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -320,33 +332,26 @@ export interface Database {
             referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "messages_sender_id_fkey"
-            columns: ["sender_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
       }
       saved_jobs: {
         Row: {
+          created_at: string | null
           id: string
-          student_id: string
           job_id: string
-          created_at: string
+          student_id: string
         }
         Insert: {
+          created_at?: string | null
           id?: string
-          student_id: string
           job_id: string
-          created_at?: string
+          student_id: string
         }
         Update: {
+          created_at?: string | null
           id?: string
-          student_id?: string
           job_id?: string
-          created_at?: string
+          student_id?: string
         }
         Relationships: [
           {
@@ -367,92 +372,89 @@ export interface Database {
       }
       student_profiles: {
         Row: {
-          id: string
-          first_name: string | null
-          last_name: string | null
-          university: string | null
-          major: string | null
-          graduation_year: number | null
-          skills: string[] | null
-          bio: string | null
           avatar_url: string | null
+          bio: string | null
+          created_at: string | null
+          first_name: string | null
+          graduation_year: number | null
+          id: string
+          last_name: string | null
+          major: string | null
           resume_url: string | null
-          created_at: string
+          skills: string[] | null
+          university: string | null
           updated_at: string | null
         }
         Insert: {
-          id: string
-          first_name?: string | null
-          last_name?: string | null
-          university?: string | null
-          major?: string | null
-          graduation_year?: number | null
-          skills?: string[] | null
-          bio?: string | null
           avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          first_name?: string | null
+          graduation_year?: number | null
+          id: string
+          last_name?: string | null
+          major?: string | null
           resume_url?: string | null
-          created_at?: string
+          skills?: string[] | null
+          university?: string | null
           updated_at?: string | null
         }
         Update: {
-          id?: string
-          first_name?: string | null
-          last_name?: string | null
-          university?: string | null
-          major?: string | null
-          graduation_year?: number | null
-          skills?: string[] | null
-          bio?: string | null
           avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          first_name?: string | null
+          graduation_year?: number | null
+          id?: string
+          last_name?: string | null
+          major?: string | null
           resume_url?: string | null
-          created_at?: string
+          skills?: string[] | null
+          university?: string | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "student_profiles_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       user_roles: {
         Row: {
+          created_at: string | null
           id: string
+          is_approved: boolean | null
           role: string
-          is_approved: boolean
-          created_at: string
         }
         Insert: {
+          created_at?: string | null
           id: string
+          is_approved?: boolean | null
           role: string
-          is_approved?: boolean
-          created_at?: string
         }
         Update: {
+          created_at?: string | null
           id?: string
+          is_approved?: boolean | null
           role?: string
-          is_approved?: boolean
-          created_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_roles_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_applications_table: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      create_policy_if_not_exists: {
+        Args: {
+          policy_name: string
+          table_name: string
+          operation: string
+          using_expr?: string
+          check_expr?: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
@@ -462,3 +464,114 @@ export interface Database {
     }
   }
 }
+
+type DefaultSchema = Database[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof Database },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof Database },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof Database },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

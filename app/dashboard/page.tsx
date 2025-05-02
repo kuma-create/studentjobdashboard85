@@ -85,7 +85,7 @@ interface RecommendedJob {
 export default async function DashboardPage() {
   try {
     // awaitを削除（createClientは非同期関数ではない）
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // ユーザー認証チェック
     const {
