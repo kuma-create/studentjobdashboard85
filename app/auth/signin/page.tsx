@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
@@ -24,21 +24,22 @@ export default function SignInPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectPath = searchParams.get("redirect") || "/dashboard"
-  const redirectAttempted = useRef(false)
 
   const supabase = createClientComponentClient()
 
   // 既にログインしているかチェック
   useEffect(() => {
     const checkSession = async () => {
-      // 既にリダイレクト試行済みの場合は処理しない
-      if (redirectAttempted.current) return
-
       try {
-        const { data } = await supabase.auth.getSession()
+        const { data, error } = await supabase.auth.getSession()
+
+        if (error) {
+          console.error("セッションチェックエラー:", error)
+          return
+        }
+
         if (data.session) {
           console.log("既存のセッションを検出しました。リダイレクトします。")
-          redirectAttempted.current = true
           setIsRedirecting(true)
 
           // 直接URLを変更してリダイレクト
@@ -54,10 +55,6 @@ export default function SignInPage() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    // 既にリダイレクト試行済みの場合は処理しない
-    if (redirectAttempted.current) return
-
     setError(null)
     setIsLoading(true)
 
@@ -74,7 +71,6 @@ export default function SignInPage() {
       }
 
       console.log("ログイン成功:", data)
-      redirectAttempted.current = true
       setIsRedirecting(true)
 
       // 直接URLを変更してリダイレクト

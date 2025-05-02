@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs"
 
 // 公開ページのパス
 const publicPaths = [
@@ -36,7 +37,7 @@ function isAuthRequired(path: string): boolean {
   return true
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   console.log("ミドルウェアパスチェック:", path)
@@ -47,33 +48,21 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // クッキーからセッションの存在を確認
-  const cookieNames = [
-    "sb-access-token",
-    "sb-refresh-token",
-    "sb-access-token-secure",
-    "sb-refresh-token-secure",
-    "supabase-auth-token",
-  ]
+  // レスポンスを作成
+  const res = NextResponse.next()
 
-  let hasSession = false
+  // supabaseクライアントを作成
+  const supabase = createMiddlewareClient({ req: request, res })
 
-  for (const name of cookieNames) {
-    if (request.cookies.has(name)) {
-      console.log(`クッキー ${name} が見つかりました`)
-      hasSession = true
-      break
-    }
-  }
+  // セッションを取得
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
 
-  // すべてのクッキーをログに出力（デバッグ用）
-  console.log(
-    "すべてのクッキー:",
-    Array.from(request.cookies.getAll()).map((c) => c.name),
-  )
+  console.log("セッションチェック:", session ? "セッションあり" : "セッションなし")
 
   // セッションがない場合はログインページにリダイレクト
-  if (!hasSession) {
+  if (!session) {
     console.log("セッションなし、ログインページへリダイレクト")
     const redirectUrl = new URL("/auth/signin", request.url)
     redirectUrl.searchParams.set("redirect", path)
@@ -82,7 +71,7 @@ export function middleware(request: NextRequest) {
 
   // セッションがある場合はそのまま通す
   console.log("セッションあり、次へ進む:", path)
-  return NextResponse.next()
+  return res
 }
 
 export const config = {
