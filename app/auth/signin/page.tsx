@@ -32,32 +32,24 @@ export default function SignInPage() {
     setIsLoading(true)
 
     try {
-      console.log("ログイン試行:", email)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) {
-        console.error("ログインエラー:", error)
         throw error
       }
 
-      console.log("ログイン成功:", data)
-
       // セッションが正しく設定されたことを確認
-      const { data: sessionData } = await supabase.auth.getSession()
-      console.log("セッション確認:", sessionData)
+      await supabase.auth.getSession()
 
       // 少し遅延を入れてセッションの設定を確実にする
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      // リダイレクト
-      console.log("リダイレクト先:", redirectPath)
-      window.location.href = redirectPath
-      // Remove router.refresh() as it's not needed with window.location
+      setTimeout(() => {
+        // リダイレクト
+        window.location.href = redirectPath
+      }, 500)
     } catch (error: any) {
-      console.error("ログイン処理エラー:", error)
       setError(error.message || "ログインに失敗しました。メールアドレスとパスワードを確認してください。")
     } finally {
       setIsLoading(false)
@@ -140,4 +132,3 @@ export default function SignInPage() {
     </div>
   )
 }
-s
