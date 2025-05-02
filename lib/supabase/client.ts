@@ -1,37 +1,36 @@
 import { createBrowserClient } from "@supabase/ssr"
 import type { Database } from "../database.types"
 
-// シングルトンパターンでクライアントを作成
-let supabaseClient: ReturnType<typeof createBrowserClient<Database>> | null = null
-
 export function createClient() {
-  if (supabaseClient === null) {
-    // 環境変数が存在することを確認
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      console.error("Supabase環境変数が設定されていません")
-      throw new Error("Supabase環境変数が設定されていません")
-    }
-
-    // 型アサーションを使用して型エラーを回避
-    supabaseClient = createBrowserClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      {
-        cookies: {
-          name: "sb-auth-token",
-          lifetime: 60 * 60 * 24 * 7, // 1週間
-          domain: "",
-          path: "/",
-          sameSite: "lax",
+  return createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          if (typeof document === "undefined") return undefined
+          const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`))
+          return match ? match[2] : undefined
+        },
+        set(name: string, value: string, options) {
+          if (typeof document === "undefined") return
+          const opt = {
+            path: "/",
+            ...options,
+          }
+          let cookie = `${name}=${value}`
+          if (opt.maxAge) cookie += `; Max-Age=${opt.maxAge}`
+          if (opt.path) cookie += `; Path=${opt.path}`
+          if (opt.domain) cookie += `; Domain=${opt.domain}`
+          if (opt.sameSite) cookie += `; SameSite=${opt.sameSite}`
+          if (opt.secure) cookie += `; Secure`
+          document.cookie = cookie
+        },
+        remove(name: string, options) {
+          if (typeof document === "undefined") return
+          document.cookie = `${name}=; Max-Age=0; Path=${options?.path || "/"}`
         },
       },
-    )
-  }
-
-  // nullチェックを追加
-  if (!supabaseClient) {
-    throw new Error("Supabaseクライアントの初期化に失敗しました")
-  }
-
-  return supabaseClient
+    },
+  )
 }

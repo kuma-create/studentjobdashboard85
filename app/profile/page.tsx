@@ -8,7 +8,6 @@ export const revalidate = 0
 
 export default async function ProfilePage() {
   try {
-    // awaitを削除（createClientは非同期関数ではない）
     const supabase = await createClient()
 
     // セッションの取得
@@ -28,7 +27,11 @@ export default async function ProfilePage() {
     }
 
     // 学生プロフィールの取得
-    const { data: profileData } = await supabase.from("student_profiles").select("*").eq("id", session.user.id).single()
+    const { data: profileData } = await supabase
+      .from("student_profiles")
+      .select("*")
+      .eq("id", session.user.id)
+      .single()
 
     // データを StudentProfile 型に変換
     const profile: StudentProfile = profileData
@@ -43,10 +46,10 @@ export default async function ProfilePage() {
           bio: profileData.bio || undefined,
           avatar_url: profileData.avatar_url || undefined,
           resume_url: profileData.resume_url || undefined,
-          created_at: profileData.created_at,
+          created_at: profileData.created_at || undefined, // ← 修正ポイント
           updated_at: profileData.updated_at || undefined,
         }
-      : {}
+      : {} as StudentProfile // fallback に型アサーションを追加
 
     return <ProfileClient initialProfile={profile} userId={session.user.id} />
   } catch (error) {

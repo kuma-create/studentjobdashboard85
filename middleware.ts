@@ -2,10 +2,9 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import type { Database } from "@/lib/database.types"
-import type { ResponseCookie } from "next/dist/compiled/@edge-runtime/cookies"
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next()
+  const response = NextResponse.next()
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,20 +14,11 @@ export async function middleware(request: NextRequest) {
         get(name: string) {
           return request.cookies.get(name)?.value
         },
-        set(name: string, value: string, options?: Partial<ResponseCookie>) {
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
+        set(name: string, value: string, options) {
+          response.cookies.set({ name, value, ...options })
         },
-        remove(name: string, options?: Partial<ResponseCookie>) {
-          response.cookies.set({
-            name,
-            value: "",
-            ...options,
-            maxAge: 0,
-          })
+        remove(name: string, options) {
+          response.cookies.set({ name, value: "", ...options, maxAge: 0 })
         },
       },
     }

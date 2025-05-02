@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import CompanyJobsClient from "./company-jobs-client"
-import type { Job } from "@/types/job" // Job型をインポート
+import type { Job } from "@/types/job"
+
 
 // 動的レンダリングを強制
 export const dynamic = "force-dynamic"

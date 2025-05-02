@@ -29,8 +29,12 @@ export default async function MessagesPage() {
     let conversations: Conversation[] = []
     let conversationsWithDetails: ConversationWithDetails[] = []
 
+    const normalizeMessage = (msg: any) => ({
+      ...msg,
+      is_read: !!msg.is_read, // ← 修正ポイント
+    })
+
     if (role === "student") {
-      // 学生：自分が参加している会話を取得
       const { data: conversationsDataRaw } = await supabase
         .from("conversations")
         .select(`
@@ -51,20 +55,23 @@ export default async function MessagesPage() {
       const conversationsData = conversationsDataRaw as unknown as ConversationWithDetails[]
       conversations = conversationsData || []
 
-      // 最新メッセージ取得
       if (conversations.length > 0) {
         const conversationIds = conversations.map((conv) => conv.id)
 
-        const { data: latestMessages } = await supabase
+        const { data: latestMessagesRaw } = await supabase
           .from("messages")
           .select("*")
           .in("conversation_id", conversationIds)
           .order("created_at", { ascending: false })
 
+        const latestMessages = latestMessagesRaw?.map(normalizeMessage) || []
+
         conversationsWithDetails = conversations.map((conv) => {
-          const messagesForConv = latestMessages?.filter((msg) => msg.conversation_id === conv.id) || []
+          const messagesForConv = latestMessages.filter((msg) => msg.conversation_id === conv.id)
           const latestMessage = messagesForConv.length > 0 ? messagesForConv[0] : null
-          const unreadCount = messagesForConv.filter((msg) => !msg.is_read && msg.sender_id !== session.user.id).length
+          const unreadCount = messagesForConv.filter(
+            (msg) => !msg.is_read && msg.sender_id !== session.user.id,
+          ).length
 
           return {
             ...conv,
@@ -74,7 +81,6 @@ export default async function MessagesPage() {
         })
       }
     } else if (role === "company") {
-      // 企業：自社の会話を取得
       const { data: companyUser } = await supabase
         .from("company_users")
         .select("company_id")
@@ -104,18 +110,19 @@ export default async function MessagesPage() {
         const conversationsData = conversationsDataRaw as unknown as ConversationWithDetails[]
         conversations = conversationsData || []
 
-        // 最新メッセージ取得
         if (conversations.length > 0) {
           const conversationIds = conversations.map((conv) => conv.id)
 
-          const { data: latestMessages } = await supabase
+          const { data: latestMessagesRaw } = await supabase
             .from("messages")
             .select("*")
             .in("conversation_id", conversationIds)
             .order("created_at", { ascending: false })
 
+          const latestMessages = latestMessagesRaw?.map(normalizeMessage) || []
+
           conversationsWithDetails = conversations.map((conv) => {
-            const messagesForConv = latestMessages?.filter((msg) => msg.conversation_id === conv.id) || []
+            const messagesForConv = latestMessages.filter((msg) => msg.conversation_id === conv.id)
             const latestMessage = messagesForConv.length > 0 ? messagesForConv[0] : null
             const unreadCount = messagesForConv.filter(
               (msg) => !msg.is_read && msg.sender_id !== session.user.id,

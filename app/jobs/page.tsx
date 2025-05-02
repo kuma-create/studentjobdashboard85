@@ -8,8 +8,7 @@ export default async function JobsPage() {
   try {
     const supabase = await createClient()
 
-    // 求人情報を取得
-    const { data: jobs, error } = await supabase
+    const { data: jobsRaw, error } = await supabase
       .from("job_postings")
       .select(`
         *,
@@ -27,7 +26,12 @@ export default async function JobsPage() {
       console.error("Error fetching jobs:", error)
     }
 
-    // 業界リスト
+    // `is_active: boolean | null` → `boolean` に強制変換して型を整える
+    const jobs = (jobsRaw || []).map((job) => ({
+      ...job,
+      is_active: !!job.is_active,
+    }))
+
     const industries = [
       { value: "all", label: "すべての業界" },
       { value: "it", label: "IT・通信" },
@@ -38,7 +42,6 @@ export default async function JobsPage() {
       { value: "media", label: "広告・メディア" },
     ]
 
-    // 職種リスト
     const jobTypes = [
       { value: "all", label: "すべての職種" },
       { value: "engineer", label: "エンジニア" },
@@ -49,7 +52,6 @@ export default async function JobsPage() {
       { value: "datascientist", label: "データサイエンティスト" },
     ]
 
-    // 勤務地リスト
     const locations = [
       { value: "all", label: "すべての勤務地" },
       { value: "tokyo", label: "東京都" },
@@ -59,7 +61,14 @@ export default async function JobsPage() {
       { value: "remote", label: "リモート可" },
     ]
 
-    return <JobsClient initialJobs={jobs || []} industries={industries} jobTypes={jobTypes} locations={locations} />
+    return (
+      <JobsClient
+        initialJobs={jobs}
+        industries={industries}
+        jobTypes={jobTypes}
+        locations={locations}
+      />
+    )
   } catch (error) {
     console.error("Error in JobsPage:", error)
     return (

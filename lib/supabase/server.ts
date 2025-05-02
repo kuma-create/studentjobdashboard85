@@ -13,25 +13,12 @@ export async function createClient() {
         get(name: string) {
           return cookieStore.get(name)?.value
         },
-        set(name: string, value: string, options: any) {
-          try {
-            cookieStore.set({ name, value, ...options })
-          } catch (error) {
-            // クッキーの設定に失敗した場合のエラーハンドリング
-            console.error("Failed to set cookie:", error)
-          }
-        },
-        remove(name: string, options: any) {
-          try {
-            cookieStore.set({ name, value: "", ...options, maxAge: 0 })
-          } catch (error) {
-            console.error("Failed to remove cookie:", error)
-          }
-        },
+        // サーバー側で cookie を set/remove する必要がある場合は NextResponse で処理するのが正しい
+        set() {},
+        remove() {},
       },
     },
   )
 }
 
-// 後方互換性のために残す
 export const createServerSupabaseClient = createClient

@@ -25,7 +25,9 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 
-type Job = {
+
+
+export type Job = {
   id: string
   title: string
   description: string
@@ -34,16 +36,23 @@ type Job = {
   salary_range: string | null
   requirements: string | null
   application_deadline: string | null
-  is_active: boolean
-  created_at: string
+  is_active: boolean | null
+  created_at: string | null
+  updated_at: string | null
   company_id: string
-  companies: {
+  created_by: string | null
+  companies?: {
     id: string
     name: string
     industry: string | null
     logo_url: string | null
   } | null
 }
+
+
+
+
+
 
 type FilterOption = {
   value: string
@@ -437,7 +446,7 @@ export default function JobsClient({ initialJobs, industries, jobTypes, location
               <CardFooter className="flex items-center justify-between pt-2">
                 <div className="flex items-center text-xs text-muted-foreground">
                   <Calendar className="mr-1 h-3 w-3" />
-                  {formatDate(job.created_at)}
+                  {job.created_at ? formatDate(job.created_at) : "日付不明"}
                 </div>
                 <Link href={`/jobs/${job.id}`}>
                   <Button size="sm" className="gap-1 bg-red-600 hover:bg-red-700">
