@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     // クッキーストアを取得
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
 
     // レスポンスを作成
     const response = NextResponse.redirect(`${requestUrl.origin}/dashboard`)

@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import type { Database } from "../database.types"
 
 export async function createRouteHandlerClient(request: NextRequest) {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const response = NextResponse.next()
 
   const supabase = createServerClient<Database>(
